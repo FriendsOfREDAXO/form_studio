@@ -228,7 +228,7 @@
                 var h = el('h4', 'fs-review__title');
                 h.appendChild(el('span', 'fs-review__nr', String(index + 1)));
                 h.appendChild(document.createTextNode(title));
-                var edit = el('button', 'uk-button uk-button-link fs-review__edit', 'Ändern');
+                var edit = el('button', 'fs-link-button fs-review__edit', 'Ändern');
                 edit.type = 'button';
                 edit.setAttribute('data-fs-goto', String(index));
                 edit.setAttribute('aria-label', title + ' ändern');
@@ -250,7 +250,7 @@
             Array.prototype.forEach.call(step.querySelectorAll('[data-fs-field]'), function (field) {
                 // Einwilligungen gehören nicht in die Übersicht
                 if (field.hidden || field.querySelector('.fs-consent')) { return; }
-                var labelEl = field.querySelector('.uk-form-label');
+                var labelEl = field.querySelector('.fs-label');
                 var text = [];
                 Array.prototype.forEach.call(field.querySelectorAll('input, select, textarea'), function (el) {
                     if (el.disabled || !el.name || (el.type === 'hidden' && !el.hasAttribute('data-a11y-fs'))) { return; }

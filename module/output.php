@@ -5,5 +5,5 @@ if (!$form) {
 } elseif (rex::isBackend()) {
     echo '<div class="alert alert-info"><strong>Form Studio:</strong> ' . rex_escape($form->name) . ' (' . count($form->steps()) . ' Schritte, ' . count($form->valueFields()) . ' Felder)</div>';
 } else {
-    echo '<section class="uk-section"><div class="uk-container uk-container-small">' . FriendsOfRedaxo\FormStudio\Processor::handle($form) . '</div></section>';
+    echo '<section class="fs-section"><div class="fs-container">' . FriendsOfRedaxo\FormStudio\Processor::handle($form) . '</div></section>';
 }

@@ -28,11 +28,38 @@ echo FriendsOfRedaxo\FormStudio\Processor::handle($form);
 
 ## Gestaltung
 
-Das Markup nutzt UIkit-Klassen. Farben und Rundungen über CSS-Variablen:
+Form Studio bringt eigenes, framework-freies CSS mit (`assets/form-studio.css`, Präfix `fs-`). Es funktioniert ohne UIkit, Bootstrap & Co., harmoniert aber mit UIkit 3. Alles lässt sich über CSS-Variablen im eigenen Theme anpassen – die Standardwerte stehen in `:where(.fs)` (Spezifität 0), eigene Angaben gewinnen also immer, unabhängig von der Ladereihenfolge:
 
 ```css
-.fs { --fs-accent: #005d40; --fs-radius: 4px; }
+.fs {
+    --fs-accent: #005d40;          /* Akzent: Buttons, Auswahl, Fortschritt */
+    --fs-radius: 2px;              /* Rundungen von Feldern, Karten, Buttons */
+    --fs-button-transform: uppercase;
+    --fs-button-spacing: 0.12em;
+    --fs-label-color: #005d40;
+    --fs-title-color: #005d40;
+}
 ```
+
+| Variable | Standard | Wirkung |
+| --- | --- | --- |
+| `--fs-accent` / `--fs-accent-hover` / `--fs-accent-contrast` | `#0f6fc6` / dunkler / `#fff` | Akzentfarbe (Kontrast ≥ 4,5:1 auf Weiß) |
+| `--fs-text` / `--fs-muted` | `inherit` / `#666` | Text, Hinweise |
+| `--fs-surface` / `--fs-surface-alt` | `#fff` / `#f8f8f8` | Felder, Karten, Bildflächen |
+| `--fs-border` / `--fs-border-strong` | `#e5e5e5` / `#ccc` | Rahmen, Hover |
+| `--fs-error` / `--fs-error-bg` | `#c0392b` / `#fef4f6` | Fehler |
+| `--fs-info-bg` / `--fs-success-bg` / `--fs-warning-bg` | | Hinweis-Felder |
+| `--fs-focus` | `var(--fs-accent)` | Fokusrahmen |
+| `--fs-font` / `--fs-font-size` / `--fs-small` | `inherit` / `1rem` / `0.875rem` | Schrift |
+| `--fs-radius` | `4px` | Rundungen |
+| `--fs-control-height` / `--fs-control-padding` | `40px` / `0 10px` | Eingabefelder |
+| `--fs-gap` / `--fs-gap-small` | `1rem` / `0.5rem` | Abstände im Raster |
+| `--fs-label-size` / `--fs-label-color` / `--fs-label-weight` | | Feldbeschriftungen |
+| `--fs-title-size` / `--fs-title-color` / `--fs-title-weight` | | Schritt-Überschriften |
+| `--fs-button-height` / `--fs-button-padding` / `--fs-button-radius` | `40px` / `0 30px` / `var(--fs-radius)` | Buttons |
+| `--fs-button-transform` / `--fs-button-spacing` / `--fs-button-size` / `--fs-button-weight` | `none` / `normal` / `0.875rem` / `400` | Button-Schrift |
+
+Feldbreiten (`width` in der Definition: `1-2`, `1-3`, `2-3`, `1-4`, `3-4`) gelten ab 640 px; darunter sind alle Felder einspaltig.
 
 ## Extension Points
 

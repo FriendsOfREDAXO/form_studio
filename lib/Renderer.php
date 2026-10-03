@@ -30,7 +30,7 @@ final class Renderer
 
         $html = '<div class="fs" id="' . $id . '">';
         $html .= self::assets();
-        $html .= '<form class="fs-form uk-form-stacked" method="post" action="' . rex_escape(self::actionUrl()) . '#' . $id . '" novalidate data-fs-form'
+        $html .= '<form class="fs-form" method="post" action="' . rex_escape(self::actionUrl()) . '#' . $id . '" novalidate data-fs-form'
             . ($multi ? ' data-fs-steps="' . count($steps) . '"' : '') . '>';
         $html .= '<input type="hidden" name="form_studio_id" value="' . $form->id . '">';
         $html .= rex_csrf_token::factory('form_studio_' . $form->id)->getHiddenField();
@@ -42,10 +42,10 @@ final class Renderer
         $html .= '<div class="fs-hp" aria-hidden="true"><label>Website<input type="text" name="form_studio_website" tabindex="-1" autocomplete="off"></label></div>';
 
         if ('' !== $formError || $errors) {
-            $html .= '<div class="uk-alert-danger fs-alert" uk-alert role="alert" tabindex="-1" data-fs-error-summary><p><strong>'
+            $html .= '<div class="fs-alert fs-alert--danger" role="alert" tabindex="-1" data-fs-error-summary><p><strong>'
                 . rex_escape($formError ?: 'Bitte prüfen Sie die markierten Angaben.') . '</strong></p>';
             if ($errors) {
-                $html .= '<ul class="uk-list uk-margin-remove">';
+                $html .= '<ul class="fs-alert__list">';
                 foreach ($errors as $name => $message) {
                     $html .= '<li><a href="#' . $id . '-' . rex_escape($name) . '">' . rex_escape($message) . '</a></li>';
                 }
@@ -69,20 +69,20 @@ final class Renderer
         foreach ($steps as $i => $step) {
             $html .= '<fieldset class="fs-step" data-fs-step="' . $i . '"' . self::condAttr($step) . '>';
             if (!empty($step['title'])) {
-                $html .= '<legend class="fs-step__title uk-h3">' . rex_escape((string) $step['title']) . '</legend>';
+                $html .= '<legend class="fs-step__title">' . rex_escape((string) $step['title']) . '</legend>';
             }
             if (!empty($step['intro'])) {
                 $html .= '<p class="fs-step__intro">' . nl2br(rex_escape((string) $step['intro'])) . '</p>';
             }
-            $html .= '<div class="uk-grid-small" uk-grid>';
+            $html .= '<div class="fs-grid">';
             foreach ($step['fields'] ?? [] as $field) {
                 $html .= self::field($form, $field, $values, $errors, $visible);
             }
             $html .= '</div>';
             if ($multi) {
                 $html .= '<div class="fs-nav">'
-                    . ($i > 0 ? '<button type="button" class="uk-button uk-button-default" data-fs-prev hidden>Zurück</button>' : '<span></span>')
-                    . '<button type="button" class="uk-button uk-button-primary" data-fs-next hidden>Weiter</button>'
+                    . ($i > 0 ? '<button type="button" class="fs-button fs-button--secondary" data-fs-prev hidden>Zurück</button>' : '<span></span>')
+                    . '<button type="button" class="fs-button fs-button--primary" data-fs-next hidden>Weiter</button>'
                     . '</div>';
             }
             $html .= '</fieldset>';
@@ -90,15 +90,15 @@ final class Renderer
 
         if ($multi) {
             $html .= '<section class="fs-review" data-fs-review hidden aria-labelledby="' . $id . '-review">'
-                . '<h3 class="fs-step__title uk-h3" id="' . $id . '-review" tabindex="-1">Ihre Angaben im Überblick</h3>'
+                . '<h3 class="fs-step__title" id="' . $id . '-review" tabindex="-1">Ihre Angaben im Überblick</h3>'
                 . '<p class="fs-step__intro">Bitte prüfen Sie Ihre Angaben. Über „Ändern“ gelangen Sie direkt zum jeweiligen Schritt.</p>'
                 . '<div class="fs-review__groups" data-fs-summary-list></div>'
-                . '<div class="fs-nav"><button type="button" class="uk-button uk-button-default" data-fs-prev>Zurück</button><span></span></div>'
+                . '<div class="fs-nav"><button type="button" class="fs-button fs-button--secondary" data-fs-prev>Zurück</button><span></span></div>'
                 . '</section>';
         }
-        $html .= '<div class="fs-submit"><button type="submit" class="uk-button uk-button-primary uk-button-large" data-fs-submit>'
+        $html .= '<div class="fs-submit"><button type="submit" class="fs-button fs-button--primary fs-button--large" data-fs-submit>'
             . rex_escape((string) $form->setting('submit_label', 'Anfrage senden')) . '</button></div>';
-        $html .= '<p class="fs-required-note uk-text-small"><span aria-hidden="true">*</span> Pflichtangabe</p>';
+        $html .= '<p class="fs-required-note"><span aria-hidden="true">*</span> Pflichtangabe</p>';
         $html .= '</form>' . self::pickerAssets() . '</div>';
         return $html;
     }
@@ -130,14 +130,14 @@ final class Renderer
     public static function success(Form $form, string $token): string
     {
         $html = '<div class="fs" id="fs-' . $form->id . '">' . self::assets()
-            . '<div class="fs-success uk-card uk-card-default uk-card-body" role="status" tabindex="-1" data-fs-success>'
-            . '<h2 class="uk-h3">' . rex_escape((string) $form->setting('success_title', 'Vielen Dank für Ihre Anfrage!')) . '</h2>'
+            . '<div class="fs-success" role="status" tabindex="-1" data-fs-success>'
+            . '<h2 class="fs-success__title">' . rex_escape((string) $form->setting('success_title', 'Vielen Dank für Ihre Anfrage!')) . '</h2>'
             . '<p>' . nl2br(rex_escape((string) $form->setting('success_text', 'Wir melden uns schnellstmöglich bei Ihnen.'))) . '</p>';
         if ($form->setting('pdf', true) && '' !== $token) {
             // frontendController() liefert die URL bereits HTML-maskiert (&amp;) – nicht erneut escapen
             $url = rex_url::frontendController(['rex-api-call' => 'form_studio_pdf', 'token' => $token]);
-            $html .= '<p><a class="uk-button uk-button-default" href="' . $url . '" download>'
-                . '<span uk-icon="download" aria-hidden="true"></span> Ihre Anfrage als PDF speichern</a></p>';
+            $html .= '<p><a class="fs-button fs-button--secondary" href="' . $url . '" download>'
+                . '<svg class="fs-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2v10m0 0-4-4m4 4 4-4M3 14v3h14v-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Ihre Anfrage als PDF speichern</a></p>';
         }
         return $html . '</div></div>';
     }
@@ -154,7 +154,7 @@ final class Renderer
         $name = (string) ($field['name'] ?? '');
         $width = preg_match('/^\d-\d$/', (string) ($field['width'] ?? '')) ? $field['width'] : '1-1';
         $hidden = '' !== $name && false === ($visible[$name] ?? true);
-        $wrap = '<div class="uk-width-1-1 uk-width-' . $width . '@s fs-field fs-field--' . rex_escape($type) . '" data-fs-field="' . rex_escape($name) . '"'
+        $wrap = '<div class="fs-field fs-w-' . $width . ' fs-field--' . rex_escape($type) . '" data-fs-field="' . rex_escape($name) . '"'
             . self::condAttr($field) . ($hidden ? ' hidden' : '') . '>';
 
         if ('heading' === $type) {
@@ -162,8 +162,8 @@ final class Renderer
             return $wrap . '<' . $level . ' class="fs-heading">' . rex_escape((string) ($field['text'] ?? '')) . '</' . $level . '></div>';
         }
         if ('info' === $type) {
-            $style = in_array($field['style'] ?? '', ['primary', 'success', 'warning'], true) ? ' uk-alert-' . $field['style'] : '';
-            return $wrap . '<div class="uk-alert' . $style . ' fs-info">' . nl2br(rex_escape((string) ($field['text'] ?? ''))) . '</div></div>';
+            $style = in_array($field['style'] ?? '', ['primary', 'success', 'warning'], true) ? ' fs-info--' . $field['style'] : '';
+            return $wrap . '<div class="fs-info' . $style . '">' . nl2br(rex_escape((string) ($field['text'] ?? ''))) . '</div></div>';
         }
         if ('hidden' === $type) {
             return '<input type="hidden" name="fs[' . rex_escape($name) . ']" value="' . rex_escape((string) ($values[$name] ?? $field['default'] ?? '')) . '">';
@@ -177,10 +177,10 @@ final class Renderer
         $label = rex_escape((string) ($field['label'] ?? $name)) . ($required ? ' <span class="fs-req" aria-hidden="true">*</span>' : '');
         $help = '';
         if (!empty($field['help'])) {
-            $help = '<div class="fs-help uk-text-small" id="' . $id . '-help">' . nl2br(rex_escape((string) $field['help'])) . '</div>';
+            $help = '<div class="fs-help" id="' . $id . '-help">' . nl2br(rex_escape((string) $field['help'])) . '</div>';
             $describedBy[] = $id . '-help';
         }
-        $err = '<div class="fs-error uk-text-danger uk-text-small" id="' . $id . '-error" aria-live="polite">' . rex_escape($error) . '</div>';
+        $err = '<div class="fs-error" id="' . $id . '-error" aria-live="polite">' . rex_escape($error) . '</div>';
         $describedBy[] = $id . '-error';
         $aria = ' aria-describedby="' . implode(' ', $describedBy) . '"' . ($required ? ' aria-required="true"' : '') . ('' !== $error ? ' aria-invalid="true"' : '');
         $inputName = 'fs[' . rex_escape($name) . ']';
@@ -189,12 +189,12 @@ final class Renderer
         $control = '';
         switch ($type) {
             case 'textarea':
-                $control = '<textarea class="uk-textarea" id="' . $id . '" name="' . $inputName . '" rows="' . max(2, (int) ($field['rows'] ?? 4)) . '"'
+                $control = '<textarea class="fs-control fs-control--textarea" id="' . $id . '" name="' . $inputName . '" rows="' . max(2, (int) ($field['rows'] ?? 4)) . '"'
                     . self::attr('placeholder', $field['placeholder'] ?? null) . self::attr('maxlength', $field['maxlength'] ?? null) . $req . $aria . '>'
                     . rex_escape((string) $value) . '</textarea>';
                 break;
             case 'select':
-                $control = '<select class="uk-select" id="' . $id . '" name="' . $inputName . '"' . $req . $aria . '>'
+                $control = '<select class="fs-control fs-control--select" id="' . $id . '" name="' . $inputName . '"' . $req . $aria . '>'
                     . '<option value="">' . rex_escape((string) ($field['placeholder'] ?? 'Bitte wählen …')) . '</option>';
                 foreach (self::options($field) as $opt) {
                     $control .= '<option value="' . rex_escape($opt['value']) . '"' . ((string) $value === $opt['value'] ? ' selected' : '') . '>' . rex_escape($opt['label']) . '</option>';
@@ -207,16 +207,16 @@ final class Renderer
                 $selected = array_map('strval', (array) $value);
                 $control = '<div class="fs-options' . (!empty($field['inline']) ? ' fs-options--inline' : '') . '" role="' . ($multiple ? 'group' : 'radiogroup') . '" aria-labelledby="' . $id . '-label"' . $aria . '>';
                 foreach (self::options($field) as $k => $opt) {
-                    $control .= '<label class="fs-option"><input class="uk-' . ($multiple ? 'checkbox' : 'radio') . '" type="' . ($multiple ? 'checkbox' : 'radio') . '" name="' . $inputName . ($multiple ? '[]' : '') . '" value="' . rex_escape($opt['value']) . '"'
+                    $control .= '<label class="fs-option"><input class="fs-check fs-check--' . ($multiple ? 'checkbox' : 'radio') . '" type="' . ($multiple ? 'checkbox' : 'radio') . '" name="' . $inputName . ($multiple ? '[]' : '') . '" value="' . rex_escape($opt['value']) . '"'
                         . (in_array($opt['value'], $selected, true) ? ' checked' : '') . ($required && !$multiple ? ' required' : '') . ($k === 0 ? ' id="' . $id . '"' : '') . '> ' . rex_escape($opt['label']) . '</label>';
                 }
                 $control .= '</div>';
-                return $wrap . '<div class="uk-form-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
+                return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
             case 'cards':
                 $multiple = !empty($field['multiple']);
                 $selected = array_map('strval', (array) $value);
                 $cols = max(2, min(5, (int) ($field['columns'] ?? 3)));
-                $control = '<div class="fs-cards uk-child-width-1-2 uk-child-width-1-' . $cols . '@m uk-grid-small" uk-grid role="' . ($multiple ? 'group' : 'radiogroup') . '" aria-labelledby="' . $id . '-label"' . $aria . '>';
+                $control = '<div class="fs-cards" style="--fs-card-cols: ' . $cols . '" role="' . ($multiple ? 'group' : 'radiogroup') . '" aria-labelledby="' . $id . '-label"' . $aria . '>';
                 foreach (self::options($field) as $k => $opt) {
                     $control .= '<div><label class="fs-card"><input class="fs-card__input" type="' . ($multiple ? 'checkbox' : 'radio') . '" name="' . $inputName . ($multiple ? '[]' : '') . '" value="' . rex_escape($opt['value']) . '"'
                         . (in_array($opt['value'], $selected, true) ? ' checked' : '') . ($required && !$multiple ? ' required' : '') . ($k === 0 ? ' id="' . $id . '"' : '') . '>'
@@ -224,19 +224,19 @@ final class Renderer
                         . ('' !== $opt['description'] ? '<span class="fs-card__desc">' . rex_escape($opt['description']) . '</span>' : '') . '</span></label></div>';
                 }
                 $control .= '</div>';
-                return $wrap . '<div class="uk-form-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
+                return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
             case 'consent':
-                $control = '<label class="fs-consent"><input class="uk-checkbox" type="checkbox" id="' . $id . '" name="' . $inputName . '" value="1"' . (!empty($value) ? ' checked' : '') . $req . $aria . '> '
+                $control = '<label class="fs-consent"><input class="fs-check fs-check--checkbox" type="checkbox" id="' . $id . '" name="' . $inputName . '" value="1"' . (!empty($value) ? ' checked' : '') . $req . $aria . '> '
                     . self::inlineLinks((string) ($field['text'] ?? $field['label'] ?? '')) . ($required ? ' <span class="fs-req" aria-hidden="true">*</span>' : '') . '</label>';
                 return $wrap . $control . $err . '</div>';
             case 'counter':
                 $min = (int) ($field['min'] ?? 0);
                 $max = isset($field['max']) && '' !== $field['max'] ? (int) $field['max'] : null;
                 $control = '<div class="fs-counter" data-fs-counter>'
-                    . '<button type="button" class="uk-button uk-button-default fs-counter__btn" data-fs-dec aria-label="weniger" aria-controls="' . $id . '">−</button>'
-                    . '<input class="uk-input fs-counter__input" type="number" inputmode="numeric" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
+                    . '<button type="button" class="fs-button fs-button--secondary fs-counter__btn" data-fs-dec aria-label="weniger" aria-controls="' . $id . '">−</button>'
+                    . '<input class="fs-control fs-counter__input" type="number" inputmode="numeric" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
                     . ' min="' . $min . '"' . (null !== $max ? ' max="' . $max . '"' : '') . ' step="' . max(1, (int) ($field['step'] ?? 1)) . '"' . $req . $aria . '>'
-                    . '<button type="button" class="uk-button uk-button-default fs-counter__btn" data-fs-inc aria-label="mehr" aria-controls="' . $id . '">+</button>'
+                    . '<button type="button" class="fs-button fs-button--secondary fs-counter__btn" data-fs-inc aria-label="mehr" aria-controls="' . $id . '">+</button>'
                     . (!empty($field['unit']) ? '<span class="fs-counter__unit">' . rex_escape((string) $field['unit']) . '</span>' : '')
                     . '</div>';
                 break;
@@ -257,7 +257,7 @@ final class Renderer
                         . ' data-showMonthNavArrows="true"';
                     $min = null;
                 }
-                $control = '<input class="uk-input' . ('' !== $picker ? ' a11y_datetime' : '') . '" type="' . $inputType . '" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
+                $control = '<input class="fs-control' . ('' !== $picker ? ' a11y_datetime' : '') . '" type="' . $inputType . '" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
                     . self::attr('placeholder', $field['placeholder'] ?? null) . self::attr('min', $min) . self::attr('max', $field['max'] ?? null)
                     . self::attr('step', $field['step'] ?? null) . self::attr('maxlength', $field['maxlength'] ?? null) . self::attr('autocomplete', $auto)
                     . $req . $aria . $picker . '>';
@@ -265,7 +265,7 @@ final class Renderer
                     $control = '<div class="fs-unit">' . $control . '<span class="fs-unit__label">' . rex_escape((string) $field['unit']) . '</span></div>';
                 }
         }
-        return $wrap . '<label class="uk-form-label" for="' . $id . '">' . $label . '</label>' . $help . '<div class="uk-form-controls">' . $control . '</div>' . $err . '</div>';
+        return $wrap . '<label class="fs-label" for="' . $id . '">' . $label . '</label>' . $help . '<div class="fs-controls">' . $control . '</div>' . $err . '</div>';
     }
 
     /** @return list<array{value: string, label: string, image: string, description: string}> */
