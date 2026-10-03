@@ -19,8 +19,6 @@ use Throwable;
  */
 final class Processor
 {
-    private const MIN_SECONDS = 3;
-
     /**
      * Ausgabe für die Modulausgabe: Formular, Fehler oder Erfolgsmeldung.
      */
@@ -41,11 +39,25 @@ final class Processor
         if (!rex_csrf_token::factory('form_studio_' . $form->id)->isValid()) {
             return Renderer::render($form, $values, [], 'Die Sitzung ist abgelaufen. Bitte senden Sie das Formular erneut ab.');
         }
-        if ('' !== rex_request::post('form_studio_website', 'string', '') || !self::timeOk(rex_request::post('form_studio_ts', 'string', ''))) {
-            // Spam: wie ein Erfolg aussehen lassen, aber nichts tun
-            return Renderer::success($form, '');
+        $spam = SpamGuard::check(
+            $form,
+            $values,
+            rex_request::post('form_studio_ts', 'string', ''),
+            rex_request::post('form_studio_website', 'string', ''),
+            rex_request::post('form_studio_js', 'string', ''),
+        );
+        switch ($spam['status']) {
+            case SpamGuard::EXPIRED:
+                return Renderer::render($form, $values, [], 'Das Formular war sehr lange geöffnet. Bitte prüfen Sie Ihre Angaben und senden Sie es erneut ab.');
+            case SpamGuard::RATE_LIMIT:
+                return Renderer::render($form, $values, [], 'Sie haben in kurzer Zeit bereits mehrere Anfragen gesendet. Bitte versuchen Sie es später erneut oder rufen Sie uns an.');
+            case SpamGuard::SPAM:
+            case SpamGuard::DUPLICATE:
+                // Spam und doppelte Klicks: wie ein Erfolg aussehen lassen, aber nichts erneut versenden
+                return Renderer::success($form, '');
         }
 
+        // Erst nach der Spamprüfung validieren – Bots bekommen keine Rückmeldung zu Feldern
         $visible = $form->visibility($values);
         $errors = self::validate($form, $values, $visible);
         if ($errors) {
@@ -64,6 +76,7 @@ final class Processor
         $data = rex_extension::registerPoint(new rex_extension_point('FORM_STUDIO_DATA', $data, ['form' => $form]));
 
         $submission = Submission::create($form, $data);
+        SpamGuard::accepted($form, $values);
         try {
             if ($form->setting('store_yform', false)) {
                 YFormSync::store($form, $data);
@@ -80,18 +93,10 @@ final class Processor
         rex_response::sendRedirect($url);
     }
 
-    /** Signierter Zeitstempel für die Mindestausfüllzeit */
+    /** Signierter Zeitstempel für die Mindestausfüllzeit (siehe SpamGuard) */
     public static function timestamp(): string
     {
-        $ts = (string) time();
-        return $ts . '.' . substr(hash_hmac('sha256', $ts, self::secret()), 0, 16);
-    }
-
-    private static function timeOk(string $value): bool
-    {
-        [$ts, $sig] = array_pad(explode('.', $value, 2), 2, '');
-        return ctype_digit($ts) && hash_equals(substr(hash_hmac('sha256', $ts, self::secret()), 0, 16), $sig)
-            && time() - (int) $ts >= self::MIN_SECONDS && time() - (int) $ts < 86400;
+        return SpamGuard::timestamp();
     }
 
     public static function secret(): string
@@ -210,5 +215,6 @@ final class Processor
     {
         $days = max(1, (int) rex_addon::get('form_studio')->getConfig('retention_days', 30));
         rex_sql::factory()->setQuery('DELETE FROM ' . rex::getTable('form_studio_submission') . ' WHERE createdate < ?', [date('Y-m-d H:i:s', strtotime('-' . $days . ' days'))]);
+        SpamGuard::cleanup($days);
     }
 }

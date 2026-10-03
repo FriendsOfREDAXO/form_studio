@@ -33,7 +33,10 @@ final class Renderer
             . ($multi ? ' data-fs-steps="' . count($steps) . '"' : '') . '>';
         $html .= '<input type="hidden" name="form_studio_id" value="' . $form->id . '">';
         $html .= rex_csrf_token::factory('form_studio_' . $form->id)->getHiddenField();
-        $html .= '<input type="hidden" name="form_studio_ts" value="' . rex_escape(Processor::timestamp()) . '">';
+        $ts = Processor::timestamp();
+        $html .= '<input type="hidden" name="form_studio_ts" value="' . rex_escape($ts) . '">';
+        // Nachweis für einen echten Browser: form-studio.js überträgt den Wert in form_studio_js
+        $html .= '<input type="hidden" name="form_studio_js" value="" data-fs-proof="' . rex_escape(strrev(SpamGuard::jsProof($ts))) . '">';
         // Honeypot (für Menschen unsichtbar, auch für Screenreader ausgeblendet)
         $html .= '<div class="fs-hp" aria-hidden="true"><label>Website<input type="text" name="form_studio_website" tabindex="-1" autocomplete="off"></label></div>';
 

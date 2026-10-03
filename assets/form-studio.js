@@ -24,6 +24,17 @@
     }
 
     function init(form) {
+        // Spamschutz: Nachweis, dass ein echter Browser das Formular ausfüllt (erst bei Interaktion)
+        var proof = form.querySelector('[data-fs-proof]');
+        if (proof) {
+            var arm = function () {
+                proof.value = proof.getAttribute('data-fs-proof').split('').reverse().join('');
+                form.removeEventListener('focusin', arm);
+                form.removeEventListener('pointerdown', arm);
+            };
+            form.addEventListener('focusin', arm);
+            form.addEventListener('pointerdown', arm);
+        }
         var steps = Array.prototype.slice.call(form.querySelectorAll('[data-fs-step]'));
         var progress = Array.prototype.slice.call(form.querySelectorAll('[data-fs-progress-item]'));
         var review = form.querySelector('[data-fs-review]');

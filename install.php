@@ -26,6 +26,20 @@ rex_sql_table::get(rex::getTable('form_studio_submission'))
     ->ensureIndex(new rex_sql_index('createdate', ['createdate']))
     ->ensure();
 
+// Protokoll für Spamschutz und Rate-Limit (IP nur als Hash)
+rex_sql_table::get(rex::getTable('form_studio_attempt'))
+    ->ensurePrimaryIdColumn()
+    ->ensureColumn(new rex_sql_column('form_id', 'int(10) unsigned'))
+    ->ensureColumn(new rex_sql_column('ip_hash', 'varchar(64)'))
+    ->ensureColumn(new rex_sql_column('payload_hash', 'varchar(64)'))
+    ->ensureColumn(new rex_sql_column('status', 'varchar(20)'))
+    ->ensureColumn(new rex_sql_column('score', 'int(10)', false, '0'))
+    ->ensureColumn(new rex_sql_column('reasons', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('createdate', 'datetime'))
+    ->ensureIndex(new rex_sql_index('ip_status', ['ip_hash', 'status', 'createdate']))
+    ->ensureIndex(new rex_sql_index('createdate', ['createdate']))
+    ->ensure();
+
 // Modul „Form Studio: Formular“ anlegen bzw. aktualisieren
 $module = rex_sql::factory()->getArray('SELECT id FROM ' . rex::getTable('module') . ' WHERE `key` = "form_studio"');
 $sql = rex_sql::factory()->setTable(rex::getTable('module'));
