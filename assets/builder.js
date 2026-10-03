@@ -22,7 +22,9 @@
         ['copy_intro', 'textarea', 'Einleitung der Kopie', ''],
         ['store_yform', 'checkbox', 'Einsendungen in YForm-Tabelle speichern', false],
         ['yform_table', 'text', 'Tabellenname (leer = automatisch)', ''],
-        ['pdf', 'checkbox', 'PDF zum Herunterladen und als Anhang', true],
+        ['pdf', 'checkbox', 'PDF erzeugen (Download nach dem Absenden)', true],
+        ['pdf_attach_team', 'checkbox', 'PDF an die E-Mail ans Hotel anhängen', true],
+        ['pdf_attach_copy', 'checkbox', 'PDF an die Kopie für die anfragende Person anhängen', true],
         ['pdf_title', 'text', 'Titel im PDF', ''],
         ['pdf_intro', 'textarea', 'Einleitung im PDF', '']
     ];

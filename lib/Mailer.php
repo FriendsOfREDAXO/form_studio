@@ -35,7 +35,7 @@ final class Mailer
             if ('' !== $replyTo) {
                 $mail->addReplyTo($replyTo);
             }
-            self::compose($mail, $subject, self::body($form, $submission, $sender, true), $pdf, $filename);
+            self::compose($mail, $subject, self::body($form, $submission, $sender, true), $form->setting('pdf_attach_team', true) ? $pdf : '', $filename);
             self::dispatch($mail, $form, 'team');
         }
 
@@ -46,7 +46,7 @@ final class Mailer
             if (filter_var($sender['email'], FILTER_VALIDATE_EMAIL)) {
                 $mail->addReplyTo($sender['email'], $sender['name']);
             }
-            self::compose($mail, (string) $form->setting('copy_subject', 'Ihre Anfrage bei ' . ($sender['name'] ?: $form->name)), self::body($form, $submission, $sender, false), $pdf, $filename);
+            self::compose($mail, (string) $form->setting('copy_subject', 'Ihre Anfrage bei ' . ($sender['name'] ?: $form->name)), self::body($form, $submission, $sender, false), $form->setting('pdf_attach_copy', true) ? $pdf : '', $filename);
             self::dispatch($mail, $form, 'copy');
         }
     }
