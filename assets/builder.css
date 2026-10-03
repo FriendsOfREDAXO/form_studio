@@ -1,0 +1,22 @@
+.fs-b-tabs { margin-bottom: 15px; }
+.fs-b-palette { position: sticky; top: 80px; }
+.fs-b-palette__group { margin: 12px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #777; }
+.fs-b-palette__item { text-align: left; margin-bottom: 4px; }
+.fs-b-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.fs-b-has-cond::after { content: " ◐"; }
+.fs-b-fields { list-style: none; margin: 0; padding: 0; }
+.fs-b-field { display: flex; align-items: center; gap: 6px; padding: 8px 10px; margin-bottom: 6px; background: #fff; border: 1px solid #dfe3e9; border-radius: 4px; cursor: pointer; }
+.fs-b-field:hover { border-color: #9bb3cf; }
+.fs-b-field.is-selected { border-color: #3bb594; box-shadow: 0 0 0 2px rgba(59, 181, 148, .25); }
+.fs-b-field.is-dragging { opacity: .4; }
+.fs-b-field.is-over { border-top: 3px solid #3bb594; }
+.fs-b-field__drag { cursor: grab; color: #aaa; letter-spacing: -2px; }
+.fs-b-field__title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-b-field__name { font-size: 11px; }
+.fs-b-field__actions { display: flex; gap: 2px; }
+.fs-b-empty { padding: 20px; text-align: center; color: #888; border: 2px dashed #dfe3e9; border-radius: 4px; }
+.fs-b-props { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.fs-b-options table { margin-bottom: 6px; }
+.fs-b-options td, .fs-b-options th { vertical-align: middle !important; }
+.fs-b-cond__rule { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 4px; margin: 6px 0; }
+.fs-b-settings { max-width: 760px; }

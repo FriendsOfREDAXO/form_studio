@@ -1,0 +1,69 @@
+/* Form Studio – Frontend. Anpassbar über CSS-Variablen, z. B.
+   .fs { --fs-accent: #005d40; --fs-radius: 4px; } */
+.fs {
+    --fs-accent: var(--wellings-primary, #1e5c4a);
+    --fs-accent-contrast: #fff;
+    --fs-border: #d6d1c8;
+    --fs-muted: #6b6b6b;
+    --fs-surface: #fff;
+    --fs-radius: 6px;
+    scroll-margin-top: 100px;
+}
+.fs-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+
+/* Fortschritt */
+.fs-progress { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin: 0 0 1.5rem; padding: 0; }
+.fs-progress li { flex: 1 1 0; min-width: 7rem; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; border-bottom: 3px solid var(--fs-border); color: var(--fs-muted); font-size: 0.9rem; }
+.fs-progress li.is-current { border-color: var(--fs-accent); color: inherit; font-weight: 600; }
+.fs-progress li.is-done { border-color: color-mix(in srgb, var(--fs-accent) 45%, transparent); color: inherit; }
+.fs-progress__nr { flex: 0 0 auto; display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid currentColor; font-size: 0.8rem; }
+.fs-progress li.is-current .fs-progress__nr, .fs-progress li.is-done .fs-progress__nr { background: var(--fs-accent); border-color: var(--fs-accent); color: var(--fs-accent-contrast); }
+@media (max-width: 639px) {
+    .fs-progress li { min-width: auto; flex: 0 0 auto; }
+    .fs-progress li:not(.is-current) .fs-progress__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+/* Schritte */
+.fs-step { border: 0; padding: 0; margin: 0 0 1rem; min-width: 0; }
+.fs-step__title { padding: 0; margin-bottom: 0.5rem; }
+.fs-step__intro { color: var(--fs-muted); margin-top: 0; }
+.fs-nav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; }
+.fs-submit { margin-top: 1.5rem; }
+.fs-required-note { color: var(--fs-muted); }
+.fs-req { color: #a3261c; }
+.fs-help { color: var(--fs-muted); margin: -0.15rem 0 0.4rem; }
+.fs-error:empty { display: none; }
+.fs-error { margin-top: 0.3rem; }
+[aria-invalid="true"].uk-input, [aria-invalid="true"].uk-select, [aria-invalid="true"].uk-textarea { border-color: #c0392b; }
+
+/* Optionen */
+.fs-options { display: grid; gap: 0.4rem; }
+.fs-options--inline { display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem; }
+.fs-option, .fs-consent { display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; }
+.fs-option input, .fs-consent input { margin-top: 0.2em; flex: 0 0 auto; }
+
+/* Bildkacheln */
+.fs-card { display: block; position: relative; height: 100%; cursor: pointer; }
+.fs-card__input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.fs-card__body { display: flex; flex-direction: column; height: 100%; border: 2px solid var(--fs-border); border-radius: var(--fs-radius); background: var(--fs-surface); overflow: hidden; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.fs-card__media { display: block; background: #f6f3ee; aspect-ratio: 4 / 3; }
+.fs-card__media img { display: block; width: 100%; height: 100%; object-fit: contain; padding: 8%; box-sizing: border-box; }
+.fs-card__label { display: block; padding: 0.6rem 0.75rem 0.2rem; font-weight: 600; }
+.fs-card__desc { display: block; padding: 0 0.75rem 0.7rem; font-size: 0.85rem; color: var(--fs-muted); }
+.fs-card:hover .fs-card__body { border-color: color-mix(in srgb, var(--fs-accent) 50%, var(--fs-border)); }
+.fs-card__input:checked + .fs-card__body { border-color: var(--fs-accent); box-shadow: 0 0 0 2px var(--fs-accent); }
+.fs-card__input:checked + .fs-card__body .fs-card__label::before { content: "✓ "; color: var(--fs-accent); }
+.fs-card__input:focus-visible + .fs-card__body { outline: 3px solid var(--fs-accent); outline-offset: 2px; }
+
+/* Zähler */
+.fs-counter { display: inline-flex; align-items: center; gap: 0.4rem; }
+.fs-counter__btn { width: 2.75rem; padding: 0; font-size: 1.25rem; line-height: 2.5rem; }
+.fs-counter__input { width: 6rem; text-align: center; }
+.fs-counter__unit, .fs-unit__label { color: var(--fs-muted); }
+.fs-unit { display: flex; align-items: center; gap: 0.5rem; }
+
+/* Zusammenfassung / Erfolg */
+.fs-summary { margin-top: 1.5rem; padding: 1.25rem; background: #f6f3ee; border-radius: var(--fs-radius); }
+.fs-summary dd { margin-left: 0; }
+.fs-success:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { .fs-card__body { transition: none; } }

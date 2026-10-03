@@ -1,0 +1,28 @@
+package: form_studio
+version: '0.1.0-dev'
+author: 'Friends Of REDAXO'
+supportpage: https://github.com/FriendsOfREDAXO/form_studio
+
+requires:
+    redaxo: ^5.18.0
+    php:
+        version: '>=8.2'
+    packages:
+        yform: '>=4.0.0'
+
+page:
+    title: 'translate:form_studio_title'
+    icon: rex-icon fa-wpforms
+    perm: form_studio[]
+    subpages:
+        forms:
+            title: 'translate:form_studio_forms'
+            icon: rex-icon fa-list
+        settings:
+            title: 'translate:form_studio_settings'
+            icon: rex-icon fa-sliders
+            perm: admin
+
+default_config:
+    retention_days: 30
+    senders: []
