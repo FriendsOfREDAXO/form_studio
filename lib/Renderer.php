@@ -22,6 +22,9 @@ final class Renderer
         $id = 'fs-' . $form->id;
         $steps = $form->steps();
         $multi = count($steps) > 1;
+        if (!$values && !$errors) {
+            $values = self::presets($form);
+        }
         $visible = $form->visibility($values);
 
         $html = '<div class="fs" id="' . $id . '">';
@@ -94,6 +97,29 @@ final class Renderer
         $html .= '<p class="fs-required-note uk-text-small"><span aria-hidden="true">*</span> Pflichtangabe</p>';
         $html .= '</form></div>';
         return $html;
+    }
+
+    /**
+     * Vorbelegung per Link, z. B. ?fs_preset[event_type]=tagung&fs_preset[house]=linde.
+     * Nur Auswahlfelder und nur gültige Optionen – Freitext lässt sich so nicht einschleusen.
+     *
+     * @return array<string, mixed>
+     */
+    public static function presets(Form $form): array
+    {
+        $raw = rex_get('fs_preset', 'array', []);
+        if (!$raw) {
+            return [];
+        }
+        $choice = [];
+        foreach ($form->valueFields() as $field) {
+            $name = (string) $field['name'];
+            if (isset($raw[$name]) && self::options($field) && in_array((string) ($field['type'] ?? ''), ['select', 'radio', 'checkboxes', 'cards'], true)) {
+                $choice[$name] = $raw[$name];
+            }
+        }
+        $clean = Processor::sanitize($form, $choice);
+        return array_filter(array_intersect_key($clean, $choice), static fn ($v): bool => '' !== $v && [] !== $v);
     }
 
     /** Erfolgsmeldung nach dem Absenden, optional mit PDF-Download */
