@@ -156,6 +156,11 @@
         }
         window.addEventListener('load', linkPickers);
         document.addEventListener('DOMContentLoaded', function () { setTimeout(linkPickers, 0); });
+        // Nachgeladen (z. B. im Ajax-Modal): Picker entstehen erst danach – kurz nachprüfen
+        (function poll(tries) {
+            linkPickers();
+            if (tries < 20 && form.querySelector('input[data-a11y-fs]:not([data-fs-linked])')) { setTimeout(function () { poll(tries + 1); }, 250); }
+        })(0);
 
         function stepValid(step) {
             linkPickers();
