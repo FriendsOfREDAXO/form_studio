@@ -70,6 +70,7 @@ final class Templates
                             ['value' => 'parlament', 'label' => 'Parlament', 'description' => 'Schulung mit Tischen', 'image' => 'fs:parlament'],
                             ['value' => 'u_form', 'label' => 'U-Form', 'description' => 'Workshops, Diskussion', 'image' => 'fs:u_form'],
                             ['value' => 'block', 'label' => 'Block / Konferenz', 'description' => 'Besprechung bis ca. 20 Personen', 'image' => 'fs:block'],
+                            ['value' => 'beratung', 'label' => 'Bitte beraten Sie mich', 'description' => 'Wir schlagen eine passende Aufstellung vor', 'image' => 'fs:beratung'],
                         ]],
                         ['type' => 'radio', 'name' => 'dance', 'label' => 'Wünschen Sie eine Tanzfläche?', 'inline' => true, 'show_if' => $celebration,
                             'options' => [['value' => 'ja', 'label' => 'Ja'], ['value' => 'nein', 'label' => 'Nein'], ['value' => 'offen', 'label' => 'Noch offen']]],

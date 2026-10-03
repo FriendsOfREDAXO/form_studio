@@ -162,6 +162,22 @@
             if (tries < 20 && form.querySelector('input[data-a11y-fs]:not([data-fs-linked])')) { setTimeout(function () { poll(tries + 1); }, 250); }
         })(0);
 
+        // Eigene, einheitliche Meldungen (Sie-Form) statt der Browsertexte
+        function message(el) {
+            var v = el.validity;
+            if (v.valueMissing) {
+                if (el.type === 'radio') { return 'Bitte wählen Sie eine Option.'; }
+                if (el.type === 'checkbox') { return el.closest('.fs-consent') ? 'Bitte bestätigen Sie diesen Punkt.' : 'Bitte wählen Sie mindestens eine Option.'; }
+                if (el.tagName === 'SELECT') { return 'Bitte wählen Sie einen Eintrag.'; }
+                return 'Bitte füllen Sie dieses Feld aus.';
+            }
+            if (v.typeMismatch && el.type === 'email') { return 'Bitte geben Sie eine gültige E-Mail-Adresse an.'; }
+            if (v.rangeUnderflow) { return 'Der Wert muss mindestens ' + el.min + ' sein.'; }
+            if (v.rangeOverflow) { return 'Der Wert darf höchstens ' + el.max + ' sein.'; }
+            if (v.patternMismatch || v.badInput || v.typeMismatch) { return 'Bitte prüfen Sie Ihre Eingabe.'; }
+            return el.validationMessage;
+        }
+
         function stepValid(step) {
             linkPickers();
             var ok = true;
@@ -189,7 +205,7 @@
                     ok = false;
                     first = first || el;
                     el.setAttribute('aria-invalid', 'true');
-                    if (error) { error.textContent = el.validationMessage; }
+                    if (error) { error.textContent = message(el); }
                 } else if (el.getAttribute('aria-invalid') === 'true' && el.type !== 'radio' && el.type !== 'checkbox') {
                     el.removeAttribute('aria-invalid');
                     if (error) { error.textContent = ''; }
@@ -296,6 +312,17 @@
 
         form.addEventListener('input', apply);
         form.addEventListener('change', apply);
+        // Fehlermeldung eines Felds sofort entfernen, sobald es gültig ist (Auswahl, Karten, Checkboxen, Eingaben)
+        form.addEventListener('change', function (e) {
+            var field = e.target.closest && e.target.closest('[data-fs-field]');
+            if (!field || e.target.hasAttribute('data-a11y-fs')) { return; }
+            var inputs = field.querySelectorAll('input[name], select[name], textarea[name]');
+            var valid = Array.prototype.every.call(inputs, function (i) { return i.disabled || i.checkValidity(); });
+            if (!valid) { return; }
+            Array.prototype.forEach.call(inputs, function (i) { i.removeAttribute('aria-invalid'); });
+            var error = field.querySelector('.fs-error');
+            if (error) { error.textContent = ''; }
+        });
         // Datums-Picker: Fehlermeldung sofort entfernen, sobald ein Wert gewählt wurde
         form.addEventListener('change', function (e) {
             var orig = e.target;
