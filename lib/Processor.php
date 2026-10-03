@@ -78,7 +78,6 @@ final class Processor
         $url = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/'), '#');
         $url .= (str_contains($url, '?') ? '&' : '?') . 'fs_done=' . $submission->token . '#fs-' . $form->id;
         rex_response::sendRedirect($url);
-        exit;
     }
 
     /** Signierter Zeitstempel für die Mindestausfüllzeit */

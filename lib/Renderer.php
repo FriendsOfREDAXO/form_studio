@@ -53,6 +53,9 @@ final class Renderer
                 $html .= '<li data-fs-progress-item="' . $i . '"' . self::condAttr($step) . '><span class="fs-progress__nr">' . ($i + 1) . '</span><span class="fs-progress__label">'
                     . rex_escape((string) ($step['title'] ?? 'Schritt ' . ($i + 1))) . '</span></li>';
             }
+            // Eigener letzter Reiter zur Kontrolle (nur mit JavaScript, ohne JS bleibt es ein einseitiges Formular)
+            $html .= '<li data-fs-progress-item="review" hidden><span class="fs-progress__nr" aria-hidden="true">✓</span><span class="fs-progress__label">'
+                . rex_escape((string) $form->setting('review_title', 'Überprüfen')) . '</span></li>';
             $html .= '</ol>';
         }
 
@@ -71,14 +74,21 @@ final class Renderer
             $html .= '</div>';
             if ($multi) {
                 $html .= '<div class="fs-nav">'
-                    . ($i > 0 ? '<button type="button" class="uk-button uk-button-default" data-fs-prev>Zurück</button>' : '<span></span>')
-                    . ($i < count($steps) - 1 ? '<button type="button" class="uk-button uk-button-primary" data-fs-next>Weiter</button>' : '')
+                    . ($i > 0 ? '<button type="button" class="uk-button uk-button-default" data-fs-prev hidden>Zurück</button>' : '<span></span>')
+                    . '<button type="button" class="uk-button uk-button-primary" data-fs-next hidden>Weiter</button>'
                     . '</div>';
             }
             $html .= '</fieldset>';
         }
 
-        $html .= '<div class="fs-summary" data-fs-summary hidden><h3 class="uk-h4">Ihre Angaben im Überblick</h3><dl class="uk-description-list uk-description-list-divider" data-fs-summary-list></dl></div>';
+        if ($multi) {
+            $html .= '<section class="fs-review" data-fs-review hidden aria-labelledby="' . $id . '-review">'
+                . '<h3 class="fs-step__title uk-h3" id="' . $id . '-review" tabindex="-1">Ihre Angaben im Überblick</h3>'
+                . '<p class="fs-step__intro">Bitte prüfen Sie Ihre Angaben. Über „Ändern“ gelangen Sie direkt zum jeweiligen Schritt.</p>'
+                . '<div class="fs-review__groups" data-fs-summary-list></div>'
+                . '<div class="fs-nav"><button type="button" class="uk-button uk-button-default" data-fs-prev>Zurück</button><span></span></div>'
+                . '</section>';
+        }
         $html .= '<div class="fs-submit"><button type="submit" class="uk-button uk-button-primary uk-button-large" data-fs-submit>'
             . rex_escape((string) $form->setting('submit_label', 'Anfrage senden')) . '</button></div>';
         $html .= '<p class="fs-required-note uk-text-small"><span aria-hidden="true">*</span> Pflichtangabe</p>';
@@ -94,8 +104,9 @@ final class Renderer
             . '<h2 class="uk-h3">' . rex_escape((string) $form->setting('success_title', 'Vielen Dank für Ihre Anfrage!')) . '</h2>'
             . '<p>' . nl2br(rex_escape((string) $form->setting('success_text', 'Wir melden uns schnellstmöglich bei Ihnen.'))) . '</p>';
         if ($form->setting('pdf', true) && '' !== $token) {
+            // frontendController() liefert die URL bereits HTML-maskiert (&amp;) – nicht erneut escapen
             $url = rex_url::frontendController(['rex-api-call' => 'form_studio_pdf', 'token' => $token]);
-            $html .= '<p><a class="uk-button uk-button-default" href="' . rex_escape($url) . '" download>'
+            $html .= '<p><a class="uk-button uk-button-default" href="' . $url . '" download>'
                 . '<span uk-icon="download" aria-hidden="true"></span> Ihre Anfrage als PDF speichern</a></p>';
         }
         return $html . '</div></div>';
@@ -243,7 +254,9 @@ final class Renderer
         }
         // Mitgelieferte Grafik (assets/seating/…) oder Datei aus dem Medienpool
         if (str_starts_with($image, 'fs:')) {
-            $src = rex_addon::get('form_studio')->getAssetsUrl('seating/' . basename(substr($image, 3)) . '.svg');
+            $file = 'seating/' . basename(substr($image, 3)) . '.svg';
+            $addon = rex_addon::get('form_studio');
+            $src = $addon->getAssetsUrl($file) . '?v=' . @filemtime($addon->getAssetsPath($file));
         } elseif (rex_media::get($image)) {
             $src = class_exists(\WellingsImage::class) ? \WellingsImage::url($image, '4_3', 480) : rex_url::media($image);
         } else {

@@ -29,6 +29,8 @@
 .fs-step__intro { color: var(--fs-muted); margin-top: 0; }
 .fs-nav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; }
 .fs-submit { margin-top: 1.5rem; }
+.fs-submit--inline { margin-top: 0; }
+.fs-review .fs-nav { align-items: center; flex-wrap: wrap; margin-top: 2rem; }
 .fs-required-note { color: var(--fs-muted); }
 .fs-req { color: #a3261c; }
 .fs-help { color: var(--fs-muted); margin: -0.15rem 0 0.4rem; }
@@ -62,8 +64,19 @@
 .fs-counter__unit, .fs-unit__label { color: var(--fs-muted); }
 .fs-unit { display: flex; align-items: center; gap: 0.5rem; }
 
-/* Zusammenfassung / Erfolg */
-.fs-summary { margin-top: 1.5rem; padding: 1.25rem; background: #f6f3ee; border-radius: var(--fs-radius); }
-.fs-summary dd { margin-left: 0; }
+/* Überprüfen: eine Karte je Schritt */
+.fs-progress li[data-fs-progress-item="review"] .fs-progress__nr { font-size: 0.9rem; }
+.fs-review__groups { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); margin-top: 1rem; }
+.fs-review__group { padding: 1rem 1.25rem 1.1rem; background: var(--fs-surface); border: 1px solid var(--fs-border); border-top: 3px solid var(--fs-accent); border-radius: var(--fs-radius); }
+.fs-review__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--fs-border); }
+.fs-review__title { display: flex; align-items: center; gap: 0.6rem; margin: 0; font-size: 1.05rem; }
+.fs-review__nr { display: inline-grid; place-items: center; flex: 0 0 auto; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--fs-accent); color: var(--fs-accent-contrast); font-size: 0.8rem; }
+.fs-review__edit { flex: 0 0 auto; font-size: 0.9rem; text-decoration: underline; text-underline-offset: 0.2em; }
+.fs-review__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 0.75rem 1.25rem; margin: 0; }
+.fs-review__item { min-width: 0; }
+.fs-review__item--wide { grid-column: 1 / -1; }
+.fs-review__item dt { color: var(--fs-muted); font-size: 0.8rem; letter-spacing: 0.02em; }
+.fs-review__item dd { margin: 0.1rem 0 0; overflow-wrap: anywhere; white-space: pre-line; }
+.fs-review__empty { margin: 0; color: var(--fs-muted); font-style: italic; }
 .fs-success:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) { .fs-card__body { transition: none; } }

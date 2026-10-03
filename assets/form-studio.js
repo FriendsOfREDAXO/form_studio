@@ -26,7 +26,7 @@
     function init(form) {
         var steps = Array.prototype.slice.call(form.querySelectorAll('[data-fs-step]'));
         var progress = Array.prototype.slice.call(form.querySelectorAll('[data-fs-progress-item]'));
-        var summary = form.querySelector('[data-fs-summary]');
+        var review = form.querySelector('[data-fs-review]');
         var submit = form.querySelector('[data-fs-submit]');
         var multi = steps.length > 1;
         var current = 0;
@@ -94,25 +94,33 @@
             return steps.filter(function (s) { return !s.hasAttribute('data-fs-skipped'); });
         }
 
+        // Ansichten: sichtbare Schritte, danach (falls vorhanden) der Reiter „Überprüfen“
         function show(index, focus) {
             var list = visibleSteps();
-            index = Math.max(0, Math.min(index, list.length - 1));
+            var max = review ? list.length : list.length - 1;
+            index = Math.max(0, Math.min(index, max));
             current = index;
-            steps.forEach(function (s) { s.hidden = s !== list[index]; });
-            var last = index === list.length - 1;
-            Array.prototype.forEach.call(form.querySelectorAll('[data-fs-next]'), function (b) { b.hidden = last; });
-            if (submit) { submit.parentNode.hidden = !last; }
-            if (summary) { summary.hidden = !last; if (last) { buildSummary(); } }
+            var inReview = review && index === list.length;
+            steps.forEach(function (s) { s.hidden = inReview || s !== list[index]; });
+            if (review) {
+                review.hidden = !inReview;
+                if (inReview) { buildSummary(); }
+            }
+            Array.prototype.forEach.call(form.querySelectorAll('[data-fs-next]'), function (b) { b.hidden = !review && index === max; });
+            Array.prototype.forEach.call(form.querySelectorAll('[data-fs-prev]'), function (b) { b.hidden = false; });
+            if (submit) { submit.parentNode.hidden = index !== max; }
             progress.forEach(function (p) {
-                var i = list.indexOf(steps[+p.getAttribute('data-fs-progress-item')]);
+                var key = p.getAttribute('data-fs-progress-item');
+                var i = 'review' === key ? list.length : list.indexOf(steps[+key]);
+                if ('review' === key) { p.hidden = false; }
                 p.classList.toggle('is-done', i !== -1 && i < index);
                 p.classList.toggle('is-current', i === index);
                 if (i === index) { p.setAttribute('aria-current', 'step'); } else { p.removeAttribute('aria-current'); }
             });
             if (focus) {
-                var legend = list[index].querySelector('legend') || list[index];
-                legend.setAttribute('tabindex', '-1');
-                legend.focus({ preventScroll: true });
+                var heading = inReview ? review.querySelector('h3') : (list[index].querySelector('legend') || list[index]);
+                heading.setAttribute('tabindex', '-1');
+                heading.focus({ preventScroll: true });
                 form.closest('.fs').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
@@ -146,12 +154,48 @@
             return ok;
         }
 
+        function el(tag, cls, text) {
+            var node = document.createElement(tag);
+            if (cls) { node.className = cls; }
+            if (text != null) { node.textContent = text; }
+            return node;
+        }
+
+        // Zusammenfassung je Schritt als eigene Gruppe mit „Ändern“
         function buildSummary() {
-            var dl = summary && summary.querySelector('[data-fs-summary-list]');
-            if (!dl) { return; }
-            dl.innerHTML = '';
-            Array.prototype.forEach.call(form.querySelectorAll('[data-fs-field]'), function (field) {
-                if (field.hidden || field.closest('[data-fs-skipped]')) { return; }
+            var box = review && review.querySelector('[data-fs-summary-list]');
+            if (!box) { return; }
+            box.innerHTML = '';
+            visibleSteps().forEach(function (step, index) {
+                var legend = step.querySelector('legend');
+                var title = legend ? legend.textContent.trim() : 'Schritt ' + (index + 1);
+                var group = el('section', 'fs-review__group');
+                var head = el('div', 'fs-review__head');
+                var h = el('h4', 'fs-review__title');
+                h.appendChild(el('span', 'fs-review__nr', String(index + 1)));
+                h.appendChild(document.createTextNode(title));
+                var edit = el('button', 'uk-button uk-button-link fs-review__edit', 'Ändern');
+                edit.type = 'button';
+                edit.setAttribute('data-fs-goto', String(index));
+                edit.setAttribute('aria-label', title + ' ändern');
+                head.appendChild(h);
+                head.appendChild(edit);
+                group.appendChild(head);
+                var dl = el('dl', 'fs-review__list');
+                summarizeStep(step, dl);
+                if (dl.children.length) {
+                    group.appendChild(dl);
+                } else {
+                    group.appendChild(el('p', 'fs-review__empty', 'Keine Angaben'));
+                }
+                box.appendChild(group);
+            });
+        }
+
+        function summarizeStep(step, dl) {
+            Array.prototype.forEach.call(step.querySelectorAll('[data-fs-field]'), function (field) {
+                // Einwilligungen gehören nicht in die Übersicht
+                if (field.hidden || field.querySelector('.fs-consent')) { return; }
                 var labelEl = field.querySelector('.uk-form-label');
                 var text = [];
                 Array.prototype.forEach.call(field.querySelectorAll('input, select, textarea'), function (el) {
@@ -163,18 +207,21 @@
                         }
                     } else if (el.tagName === 'SELECT') {
                         if (el.value) { text.push(el.options[el.selectedIndex].text); }
-                    } else if (el.value) {
+                    } else if (el.type === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) {
+                        text.push(el.value.split('-').reverse().join('.'));
+                    } else if (el.type === 'time' && el.value) {
+                        text.push(el.value + ' Uhr');
+                    } else if (el.value && !(field.querySelector('[data-fs-counter]') && +el.value === 0)) {
+                        // Zähler mit 0 (z. B. „0 Zimmer“) weglassen
                         var unit = field.querySelector('.fs-counter__unit, .fs-unit__label');
                         text.push(el.value + (unit ? ' ' + unit.textContent : ''));
                     }
                 });
                 if (!text.length || !labelEl) { return; }
-                var dt = document.createElement('dt');
-                dt.textContent = labelEl.textContent.replace(/\s*\*\s*$/, '').trim();
-                var dd = document.createElement('dd');
-                dd.textContent = text.join(', ');
-                dl.appendChild(dt);
-                dl.appendChild(dd);
+                var item = el('div', 'fs-review__item' + (field.querySelector('textarea') ? ' fs-review__item--wide' : ''));
+                item.appendChild(el('dt', null, labelEl.textContent.replace(/\s*\*\s*$/, '').trim()));
+                item.appendChild(el('dd', null, text.join(', ')));
+                dl.appendChild(item);
             });
         }
 
@@ -198,19 +245,36 @@
 
         if (multi) {
             form.classList.add('fs-form--wizard');
+            // Absenden neben „Zurück“ im Reiter „Überprüfen“
+            var reviewNav = review && review.querySelector('.fs-nav');
+            if (reviewNav && submit) {
+                var wrap = submit.parentNode;
+                reviewNav.replaceChild(wrap, reviewNav.lastElementChild);
+                wrap.classList.add('fs-submit--inline');
+            }
             form.addEventListener('click', function (e) {
+                var gotoBtn = e.target.closest('[data-fs-goto]');
                 if (e.target.closest('[data-fs-next]')) {
                     e.preventDefault();
                     if (stepValid(visibleSteps()[current])) { show(current + 1, true); }
                 } else if (e.target.closest('[data-fs-prev]')) {
                     e.preventDefault();
                     show(current - 1, true);
+                } else if (gotoBtn) {
+                    e.preventDefault();
+                    show(+gotoBtn.getAttribute('data-fs-goto'), true);
                 }
             });
         }
 
         form.addEventListener('submit', function (e) {
             apply();
+            // Enter in einem Feld vor dem letzten Reiter: weiterblättern statt absenden
+            if (multi && review && current < visibleSteps().length) {
+                e.preventDefault();
+                if (stepValid(visibleSteps()[current])) { show(current + 1, true); }
+                return;
+            }
             var invalid = visibleSteps().filter(function (s) { return !stepValid(s); });
             if (invalid.length) {
                 e.preventDefault();
