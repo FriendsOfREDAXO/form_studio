@@ -3,6 +3,7 @@
 namespace FriendsOfRedaxo\FormStudio;
 
 use rex_addon;
+use rex_clang;
 use rex_csrf_token;
 use rex_media;
 use rex_url;
@@ -98,7 +99,7 @@ final class Renderer
         $html .= '<div class="fs-submit"><button type="submit" class="uk-button uk-button-primary uk-button-large" data-fs-submit>'
             . rex_escape((string) $form->setting('submit_label', 'Anfrage senden')) . '</button></div>';
         $html .= '<p class="fs-required-note uk-text-small"><span aria-hidden="true">*</span> Pflichtangabe</p>';
-        $html .= '</form></div>';
+        $html .= '</form>' . self::pickerAssets() . '</div>';
         return $html;
     }
 
@@ -246,10 +247,20 @@ final class Renderer
                     $min = date('Y-m-d', strtotime('+' . (int) $field['min_days_ahead'] . ' days'));
                 }
                 $auto = $field['autocomplete'] ?? ['email' => 'email', 'tel' => 'tel'][$type] ?? null;
-                $control = '<input class="uk-input" type="' . $inputType . '" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
+                $picker = '';
+                if (in_array($type, ['date', 'time'], true) && self::pickerAvailable()) {
+                    // Barrierefreier Picker (a11y_datetime_addon): Anzeige deutsch, Wert bleibt ISO (Y-m-d bzw. H:i)
+                    self::$pickerUsed = true;
+                    $inputType = 'text';
+                    $picker = ' data-a11y-fs="1" data-locale="' . rex_escape(self::pickerLocale()) . '"'
+                        . ('time' === $type ? ' data-enableTime="true" data-noCalendar="true" data-time_24hr="true"' : self::attr('data-minDate', $min) . self::attr('data-maxDate', $field['max'] ?? null))
+                        . ' data-showMonthNavArrows="true"';
+                    $min = null;
+                }
+                $control = '<input class="uk-input' . ('' !== $picker ? ' a11y_datetime' : '') . '" type="' . $inputType . '" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape((string) $value) . '"'
                     . self::attr('placeholder', $field['placeholder'] ?? null) . self::attr('min', $min) . self::attr('max', $field['max'] ?? null)
                     . self::attr('step', $field['step'] ?? null) . self::attr('maxlength', $field['maxlength'] ?? null) . self::attr('autocomplete', $auto)
-                    . $req . $aria . '>';
+                    . $req . $aria . $picker . '>';
                 if (!empty($field['unit'])) {
                     $control = '<div class="fs-unit">' . $control . '<span class="fs-unit__label">' . rex_escape((string) $field['unit']) . '</span></div>';
                 }
@@ -322,6 +333,33 @@ final class Renderer
     }
 
     private static bool $assetsDone = false;
+
+    private static bool $pickerUsed = false;
+
+    /** Datums-Picker nutzen, wenn a11y_datetime_addon installiert und nicht abgeschaltet ist */
+    private static function pickerAvailable(): bool
+    {
+        return rex_addon::get('a11y_datetime_addon')->isAvailable()
+            && class_exists(\FriendsOfREDAXO\A11yDatetimeAddon\FrontendHelper::class)
+            && (bool) rex_addon::get('form_studio')->getConfig('datepicker', true);
+    }
+
+    private static function pickerLocale(): string
+    {
+        $code = rex_clang::getCurrent()->getCode();
+        return in_array($code, ['de', 'en', 'nl', 'fr', 'it', 'es'], true) ? ('en' === $code ? 'default' : $code) : 'de';
+    }
+
+    /** Picker-Assets, nur wenn ein Datums-/Zeitfeld gerendert wurde */
+    private static function pickerAssets(): string
+    {
+        if (!self::$pickerUsed) {
+            return '';
+        }
+        self::$pickerUsed = false;
+        $locale = self::pickerLocale();
+        return \FriendsOfREDAXO\A11yDatetimeAddon\FrontendHelper::getAssetsHtml('default' === $locale ? '' : $locale, false, false, true);
+    }
 
     private static function assets(): string
     {

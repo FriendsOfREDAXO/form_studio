@@ -136,11 +136,49 @@
             }
         }
 
+        // a11y_datetime legt ein sichtbares Ersatzfeld an – Label, Beschreibung und Pflicht dorthin übertragen
+        function linkPickers() {
+            Array.prototype.forEach.call(form.querySelectorAll('input[data-a11y-fs]'), function (orig) {
+                var fp = orig._flatpickr;
+                if (!fp || !fp.altInput || orig.getAttribute('data-fs-linked')) { return; }
+                var alt = fp.altInput;
+                alt.id = orig.id;
+                orig.id = orig.id + '-value';
+                ['aria-describedby', 'aria-required', 'aria-invalid'].forEach(function (a) {
+                    if (orig.hasAttribute(a)) { alt.setAttribute(a, orig.getAttribute(a)); }
+                });
+                if (orig.hasAttribute('data-fs-required') || orig.required) { alt.required = true; alt.setAttribute('aria-required', 'true'); }
+                alt.setAttribute('autocomplete', 'off');
+                // aria-expanded/aria-haspopup sind nur mit einer passenden Rolle gültig (a11y_datetime setzt keine)
+                if (alt.hasAttribute('aria-expanded') && !alt.hasAttribute('role')) { alt.setAttribute('role', 'combobox'); }
+                orig.setAttribute('data-fs-linked', '1');
+            });
+        }
+        window.addEventListener('load', linkPickers);
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(linkPickers, 0); });
+
         function stepValid(step) {
+            linkPickers();
             var ok = true;
             var first = null;
+            // Datums-Picker (a11y_datetime): das Originalfeld ist versteckt – Pflicht am sichtbaren Ersatzfeld prüfen
+            Array.prototype.forEach.call(step.querySelectorAll('input[data-a11y-fs]'), function (orig) {
+                if (orig.disabled || orig.closest('[hidden]')) { return; }
+                var alt = (orig._flatpickr && orig._flatpickr.altInput) || orig;
+                var error = orig.closest('[data-fs-field]') && orig.closest('[data-fs-field]').querySelector('.fs-error');
+                if ((orig.required || alt.required) && !orig.value) {
+                    ok = false;
+                    first = first || alt;
+                    alt.setAttribute('aria-invalid', 'true');
+                    if (error) { error.textContent = 'Bitte wählen Sie ' + (orig.getAttribute('data-noCalendar') === 'true' ? 'eine Uhrzeit' : 'ein Datum') + '.'; }
+                } else {
+                    alt.removeAttribute('aria-invalid');
+                    if (error && alt !== orig) { error.textContent = ''; }
+                }
+            });
             Array.prototype.forEach.call(step.querySelectorAll('input, select, textarea'), function (el) {
-                if (el.disabled || el.closest('[hidden]')) { return; }
+                // Ersatzfelder der Datums-Picker (ohne name) wurden oben geprüft
+                if (el.disabled || el.closest('[hidden]') || !el.name || el.hasAttribute('data-a11y-fs')) { return; }
                 var error = el.closest('[data-fs-field]') && el.closest('[data-fs-field]').querySelector('.fs-error');
                 if (!el.checkValidity()) {
                     ok = false;
@@ -210,7 +248,7 @@
                 var labelEl = field.querySelector('.uk-form-label');
                 var text = [];
                 Array.prototype.forEach.call(field.querySelectorAll('input, select, textarea'), function (el) {
-                    if (el.disabled || el.type === 'hidden') { return; }
+                    if (el.disabled || !el.name || (el.type === 'hidden' && !el.hasAttribute('data-a11y-fs'))) { return; }
                     if ((el.type === 'radio' || el.type === 'checkbox')) {
                         if (el.checked) {
                             var l = el.closest('label');
@@ -218,9 +256,9 @@
                         }
                     } else if (el.tagName === 'SELECT') {
                         if (el.value) { text.push(el.options[el.selectedIndex].text); }
-                    } else if (el.type === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) {
+                    } else if ((el.type === 'date' || el.hasAttribute('data-a11y-fs')) && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) {
                         text.push(el.value.split('-').reverse().join('.'));
-                    } else if (el.type === 'time' && el.value) {
+                    } else if ((el.type === 'time' || el.getAttribute('data-noCalendar') === 'true') && el.value) {
                         text.push(el.value + ' Uhr');
                     } else if (el.value && !(field.querySelector('[data-fs-counter]') && +el.value === 0)) {
                         // Zähler mit 0 (z. B. „0 Zimmer“) weglassen

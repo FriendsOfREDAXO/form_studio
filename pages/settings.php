@@ -33,6 +33,7 @@ if ('post' === rex_request::requestMethod()) {
         }
         $addon->setConfig('senders', $senders);
         $addon->setConfig('retention_days', max(1, rex_post('retention_days', 'int', 30)));
+        $addon->setConfig('datepicker', 1 === rex_post('datepicker', 'int', 0));
         $addon->setConfig('spam_rate_limit', max(0, rex_post('spam_rate_limit', 'int', 5)));
         $addon->setConfig('spam_max_links', max(0, rex_post('spam_max_links', 'int', 1)));
         $addon->setConfig('spam_upkeep_badwords', 1 === rex_post('spam_upkeep_badwords', 'int', 0));
@@ -71,6 +72,11 @@ $durations = '';
 foreach (['1h' => '1 Stunde', '6h' => '6 Stunden', '24h' => '24 Stunden', '7d' => '7 Tage', '30d' => '30 Tage'] as $value => $label) {
     $durations .= '<option value="' . $value . '"' . ($value === $addon->getConfig('spam_upkeep_block_duration', '24h') ? ' selected' : '') . '>' . $label . '</option>';
 }
+$content .= '<fieldset><legend>Datum & Uhrzeit</legend>'
+    . (rex_addon::get('a11y_datetime_addon')->isAvailable()
+        ? '<div class="checkbox"><label><input type="checkbox" name="datepicker" value="1"' . ($addon->getConfig('datepicker', true) ? ' checked' : '') . '> Barrierefreien Kalender (a11y_datetime_addon) für Datums- und Zeitfelder verwenden</label></div>'
+        : '<p class="help-block">Tipp: Mit dem AddOn <strong>a11y_datetime_addon</strong> erhalten Datums- und Zeitfelder einen barrierefreien Kalender. Ohne bleibt das Eingabefeld des Browsers.</p>')
+    . '</fieldset>';
 $content .= '<fieldset><legend>Spamschutz</legend>'
     . '<p class="help-block">Immer aktiv: unsichtbares Fangfeld, Mindestausfüllzeit, signierter Zeitstempel, Browser-Nachweis, Link- und HTML-Prüfung – ohne Captcha und ohne Drittanbieter. '
     . 'Letzte 30 Tage: <strong>' . $stats['ok'] . '</strong> Einsendungen, <strong>' . $stats['spam'] . '</strong> als Spam abgewiesen, <strong>' . $stats['rate_limit'] . '</strong> wegen zu vieler Versuche gebremst.</p>'

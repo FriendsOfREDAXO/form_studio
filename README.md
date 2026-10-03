@@ -52,3 +52,16 @@ REDAXO ≥ 5.18, PHP ≥ 8.2, YForm ≥ 4. Optional: phpmailer (E-Mail), pdfout 
 ## Lizenz
 
 MIT – Friends Of REDAXO
+
+
+## Datum & Uhrzeit
+
+Ist das AddOn **a11y_datetime_addon** installiert, erhalten Felder vom Typ `date` und `time` automatisch einen barrierefreien Kalender bzw. eine Zeitauswahl (abschaltbar unter *Einstellungen*). Angezeigt wird im Format der Sprache (z. B. 20.10.2026), gespeichert und geprüft wird weiterhin ISO (`2026-10-20`, `18:00`). `min_days_ahead` bzw. `max` werden an den Kalender übergeben. Ohne das AddOn bleibt das native Eingabefeld des Browsers.
+
+## Spamschutz
+
+Ohne Captcha und ohne Drittanbieter: unsichtbares Fangfeld, Mindestausfüllzeit, signierter Zeitstempel, Browser-Nachweis, Link- und Markup-Prüfung, Rate-Limit je Besucher und Doppel-Erkennung. Mit **upkeep** zusätzlich Badword-Prüfung und – bei wiederholtem Spam – IP-Sperre über die Intrusion Prevention. IP-Adressen werden nur gehasht gespeichert. Eigene Prüfungen über den Extension Point `FORM_STUDIO_SPAM_CHECK`.
+
+## Vorbelegung per Link
+
+`?fs_preset[feld]=wert` belegt Auswahlfelder (select, radio, checkboxes, cards) vor – nur mit gültigen Optionen, Freitext lässt sich so nicht einschleusen. Beispiel: `?fs_preset[event_type]=tagung&fs_preset[house]=linde`.
