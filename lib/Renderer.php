@@ -171,7 +171,7 @@ final class Renderer
 
         $id = 'fs-' . $form->id . '-' . $name;
         $required = !empty($field['required']);
-        $value = $values[$name] ?? ($field['default'] ?? '');
+        $value = $values[$name] ?? self::defaultValue($field);
         $error = $errors[$name] ?? '';
         $describedBy = [];
         $label = rex_escape((string) ($field['label'] ?? $name)) . ($required ? ' <span class="fs-req" aria-hidden="true">*</span>' : '');
@@ -266,6 +266,28 @@ final class Renderer
                 }
         }
         return $wrap . '<label class="fs-label" for="' . $id . '">' . $label . '</label>' . $help . '<div class="fs-controls">' . $control . '</div>' . $err . '</div>';
+    }
+
+    /**
+     * Vorgabewert eines Felds. Für Uhrzeit- und Datumsfelder auch relativ:
+     * „now“ (jetzt, Uhrzeit auf 15 Minuten gerundet), „now+4h“, „now+30m“, „today“, „today+7d“.
+     */
+    public static function defaultValue(array $field): mixed
+    {
+        $default = $field['default'] ?? '';
+        $type = (string) ($field['type'] ?? '');
+        if (!is_string($default) || !in_array($type, ['time', 'date'], true) || !preg_match('/^(now|today)(?:\+(\d+)([mhd]))?$/', $default, $m)) {
+            return $default;
+        }
+        $time = new \DateTimeImmutable('now', new \DateTimeZone(date_default_timezone_get()));
+        if ('time' === $type) {
+            $minutes = (int) $time->format('i');
+            $time = $time->setTime((int) $time->format('G'), (int) (ceil($minutes / 15) * 15) % 60)->modify($minutes > 45 ? '+1 hour' : '+0 hour');
+        }
+        if (isset($m[2])) {
+            $time = $time->modify('+' . (int) $m[2] . ' ' . ['m' => 'minutes', 'h' => 'hours', 'd' => 'days'][$m[3]]);
+        }
+        return 'time' === $type ? $time->format('H:i') : $time->format('Y-m-d');
     }
 
     /** @return list<array{value: string, label: string, image: string, description: string}> */

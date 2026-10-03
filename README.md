@@ -85,6 +85,8 @@ MIT – Friends Of REDAXO
 
 Ist das AddOn **a11y_datetime_addon** installiert, erhalten Felder vom Typ `date` und `time` automatisch einen barrierefreien Kalender bzw. eine Zeitauswahl (abschaltbar unter *Einstellungen*). Angezeigt wird im Format der Sprache (z. B. 20.10.2026), gespeichert und geprüft wird weiterhin ISO (`2026-10-20`, `18:00`). `min_days_ahead` bzw. `max` werden an den Kalender übergeben. Ohne das AddOn bleibt das native Eingabefeld des Browsers.
 
+**Vorgabewerte relativ zur aktuellen Zeit:** In der Felddefinition `"default": "now"` (Uhrzeit jetzt, auf 15 Minuten gerundet), `"now+4h"`, `"now+30m"` bzw. für Datumsfelder `"today"`, `"today+7d"`.
+
 ## Spamschutz
 
 Ohne Captcha und ohne Drittanbieter: unsichtbares Fangfeld, Mindestausfüllzeit, signierter Zeitstempel, Browser-Nachweis, Link- und Markup-Prüfung, Rate-Limit je Besucher und Doppel-Erkennung. Mit **upkeep** zusätzlich Badword-Prüfung und – bei wiederholtem Spam – IP-Sperre über die Intrusion Prevention. IP-Adressen werden nur gehasht gespeichert. Eigene Prüfungen über den Extension Point `FORM_STUDIO_SPAM_CHECK`.

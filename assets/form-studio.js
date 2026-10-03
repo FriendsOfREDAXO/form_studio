@@ -296,6 +296,16 @@
 
         form.addEventListener('input', apply);
         form.addEventListener('change', apply);
+        // Datums-Picker: Fehlermeldung sofort entfernen, sobald ein Wert gewählt wurde
+        form.addEventListener('change', function (e) {
+            var orig = e.target;
+            if (!orig.matches || !orig.matches('input[data-a11y-fs]') || !orig.value) { return; }
+            var alt = (orig._flatpickr && orig._flatpickr.altInput) || orig;
+            alt.removeAttribute('aria-invalid');
+            var field = orig.closest('[data-fs-field]');
+            var error = field && field.querySelector('.fs-error');
+            if (error) { error.textContent = ''; }
+        });
 
         if (multi) {
             form.classList.add('fs-form--wizard');
