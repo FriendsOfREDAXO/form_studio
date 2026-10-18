@@ -3,6 +3,7 @@
 use FriendsOfRedaxo\FormStudio\Conditions;
 use FriendsOfRedaxo\FormStudio\FieldTypes;
 use FriendsOfRedaxo\FormStudio\Form;
+use FriendsOfRedaxo\FormStudio\PdfTemplates;
 use FriendsOfRedaxo\FormStudio\Templates;
 use FriendsOfRedaxo\FormStudio\YFormImport;
 use FriendsOfRedaxo\FormStudio\YFormSync;
@@ -101,6 +102,8 @@ if ('edit' === $func && ($form = Form::get($id))) {
         'form_studio_set_mail_to', 'form_studio_set_mail_to_help', 'form_studio_set_mail_subject', 'form_studio_set_copy_to_sender', 'form_studio_set_sender_field', 'form_studio_set_sender_field_first',
         'form_studio_set_copy_subject', 'form_studio_set_copy_intro',
         'form_studio_set_pdf', 'form_studio_set_pdf_attach_team', 'form_studio_set_pdf_attach_copy', 'form_studio_set_pdf_title', 'form_studio_set_pdf_intro',
+        'form_studio_set_pdf_outro', 'form_studio_set_pdf_outro_help', 'form_studio_set_pdf_signature', 'form_studio_set_pdf_signature_help',
+        'form_studio_set_pdf_signature_labels', 'form_studio_set_pdf_signature_labels_help', 'form_studio_set_pdf_template', 'form_studio_set_pdf_template_help', 'form_studio_set_pdf_template_default',
         'form_studio_set_store_yform', 'form_studio_set_store_yform_help', 'form_studio_set_yform_table', 'form_studio_set_yform_table_help',
         'form_studio_set_draft', 'form_studio_set_draft_help', 'form_studio_set_draft_days',
         'form_studio_set_datalayer', 'form_studio_set_datalayer_help',
@@ -112,6 +115,7 @@ if ('edit' === $func && ($form = Form::get($id))) {
         'graphicsUrl' => rex_addon::get('form_studio')->getAssetsUrl('seating/'),
         'yformTable' => YFormSync::tableName($form),
         'defaults' => Form::DEFAULTS,
+        'pdfTemplates' => PdfTemplates::all(),
         'mediaTypes' => 'jpg,jpeg,png,gif,svg,webp,avif',
         'i18n' => array_combine($i18nKeys, array_map(static fn (string $k): string => rex_i18n::rawMsg($k), $i18nKeys)),
         'settingsUrl' => rex::getUser()?->isAdmin() ? rex_url::backendPage('form_studio/settings') : '',

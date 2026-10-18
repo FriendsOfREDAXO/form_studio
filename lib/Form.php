@@ -29,6 +29,10 @@ final class Form
         'draft' => false,
         'draft_days' => 7,
         'datalayer' => false,
+        'pdf_outro' => '',
+        'pdf_signature' => false,
+        'pdf_signature_labels' => 'Ort, Datum | Unterschrift',
+        'pdf_template' => '',
     ];
 
     public const TRANSITIONS = ['none', 'slide', 'fade'];

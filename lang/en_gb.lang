@@ -115,3 +115,23 @@ form_studio_fe_step_live = Step {0} of {1}: {2}
 form_studio_fe_draft_restored = Your entries have been restored.
 form_studio_fe_draft_clear = Clear entries
 form_studio_fe_draft_cleared = Your saved entries have been deleted.
+
+# PDF (Vorlagen, Unterschrift)
+form_studio_set_pdf_outro = Closing text in the PDF
+form_studio_set_pdf_outro_help = Shown below the entries, e.g. notes on payment or cancellation.
+form_studio_set_pdf_signature = Add signature lines
+form_studio_set_pdf_signature_help = Lines for signing at the end of the PDF, e.g. for orders that are returned signed.
+form_studio_set_pdf_signature_labels = Signature line labels
+form_studio_set_pdf_signature_labels_help = Separate several lines with |, e.g. "Place, date | Signature".
+form_studio_set_pdf_template = PDF template
+form_studio_set_pdf_template_help = Create your own templates under Form Studio → Settings → PDF templates and edit them under Templates.
+form_studio_set_pdf_template_default = Default (Form Studio)
+form_studio_pdf_tpl_title = PDF templates
+form_studio_pdf_tpl_help = A PDF template is a REDAXO template holding the PDF layout. New templates start as a copy of the default layout and can be adjusted under Templates (logo, colours, texts). In the form, choose the template under Settings → PDF. The templates are inactive, so they are not offered as page templates.
+form_studio_pdf_tpl_none = No custom templates yet – the default layout is used.
+form_studio_pdf_tpl_name = Name
+form_studio_pdf_tpl_default_name = Form Studio: PDF
+form_studio_pdf_tpl_create = Create template
+form_studio_pdf_tpl_created = Template "{0}" created.
+form_studio_pdf_tpl_edit = Edit now
+form_studio_pdf_tpl_no_pdfout = PDFs require the pdfout addon.

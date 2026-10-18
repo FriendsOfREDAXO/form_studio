@@ -10,8 +10,10 @@
 - **JavaScript-Ereignisse** `fs:step`, `fs:submit`, `fs:success`, `fs:draft-restored`; optional an `dataLayer`.
 - **Formular aus YForm-Tabelle übernehmen** (fieldset = Schritt), nicht übernehmbare Felder werden angezeigt.
 - **Modul**: eigener Dankestext und CSS-Klassen je Platzierung, Vorschau im Backend; Modulcode wird bei Update aktualisiert.
+- **PDF-Vorlagen** als REDAXO-Templates: unter Einstellungen → PDF-Vorlagen anlegen (Kopie des Standard-Layouts), unter Templates anpassen, je Formular auswählen. Dazu **Schlusstext** und **Unterschriftszeilen** (Beschriftung frei, z. B. „Ort, Datum | Unterschrift“).
 - **Einstellungen** im Builder nach Themen gegliedert, mit kurzen Erklärungen.
 - Fix: Beschreibung ging beim Speichern verloren; Schalter „Aktiv“ (inaktive Formulare erscheinen nicht); Bilder für Kacheln über den Medienpool; Warnung bei ungespeicherten Änderungen.
+- Fix: Einwilligungen erschienen im PDF unter „Weitere Angaben“.
 - Fix: Einwilligung und Schalter werden in YForm als 0/1 gespeichert (Fehler bei strikter Datenbank).
 - Fix: Feldfehler verschwinden schon beim Tippen – der Klick auf „Weiter“ ging sonst ins Leere; Einwilligungstext mit Link bricht nicht mehr schmal um.
 

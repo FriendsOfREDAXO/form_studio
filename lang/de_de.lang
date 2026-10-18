@@ -115,3 +115,23 @@ form_studio_fe_step_live = Schritt {0} von {1}: {2}
 form_studio_fe_draft_restored = Ihre Eingaben wurden wiederhergestellt.
 form_studio_fe_draft_clear = Eingaben löschen
 form_studio_fe_draft_cleared = Ihre gespeicherten Eingaben wurden gelöscht.
+
+# PDF (Vorlagen, Unterschrift)
+form_studio_set_pdf_outro = Schlusstext im PDF
+form_studio_set_pdf_outro_help = Steht unter den Angaben, z. B. Hinweise zu Zahlung oder Stornierung.
+form_studio_set_pdf_signature = Unterschriftszeilen anfügen
+form_studio_set_pdf_signature_help = Linien zum Unterschreiben am Ende des PDFs, z. B. für Aufträge, die unterschrieben zurückkommen.
+form_studio_set_pdf_signature_labels = Beschriftung der Unterschriftszeilen
+form_studio_set_pdf_signature_labels_help = Mehrere Zeilen mit | trennen, z. B. „Ort, Datum | Unterschrift“.
+form_studio_set_pdf_template = PDF-Vorlage
+form_studio_set_pdf_template_help = Eigene Vorlagen legen Sie unter Form Studio → Einstellungen → PDF-Vorlagen an und bearbeiten sie unter Templates.
+form_studio_set_pdf_template_default = Standard (Form Studio)
+form_studio_pdf_tpl_title = PDF-Vorlagen
+form_studio_pdf_tpl_help = Eine PDF-Vorlage ist ein REDAXO-Template mit dem Layout des PDFs. Neue Vorlagen starten als Kopie des Standard-Layouts und lassen sich unter Templates anpassen (Logo, Farben, Texte). Im Formular wählen Sie die Vorlage unter Einstellungen → PDF. Die Vorlagen sind inaktiv und erscheinen deshalb nicht als Seiten-Template.
+form_studio_pdf_tpl_none = Noch keine eigenen Vorlagen – es gilt das Standard-Layout.
+form_studio_pdf_tpl_name = Name
+form_studio_pdf_tpl_default_name = Form Studio: PDF
+form_studio_pdf_tpl_create = Vorlage anlegen
+form_studio_pdf_tpl_created = Vorlage „{0}“ angelegt.
+form_studio_pdf_tpl_edit = Jetzt bearbeiten
+form_studio_pdf_tpl_no_pdfout = Für PDFs wird das AddOn pdfout benötigt.

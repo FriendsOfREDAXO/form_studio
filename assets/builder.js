@@ -40,7 +40,11 @@
             { key: 'pdf_attach_team', type: 'checkbox', label: 'set_pdf_attach_team', def: true, dep: 'pdf' },
             { key: 'pdf_attach_copy', type: 'checkbox', label: 'set_pdf_attach_copy', def: true, dep: 'pdf' },
             { key: 'pdf_title', type: 'text', label: 'set_pdf_title', def: '', dep: 'pdf' },
-            { key: 'pdf_intro', type: 'textarea', label: 'set_pdf_intro', def: '', dep: 'pdf' }
+            { key: 'pdf_intro', type: 'textarea', label: 'set_pdf_intro', def: '', dep: 'pdf' },
+            { key: 'pdf_outro', type: 'textarea', label: 'set_pdf_outro', def: '', dep: 'pdf', help: 'set_pdf_outro_help' },
+            { key: 'pdf_signature', type: 'checkbox', label: 'set_pdf_signature', def: false, dep: 'pdf', help: 'set_pdf_signature_help' },
+            { key: 'pdf_signature_labels', type: 'text', label: 'set_pdf_signature_labels', def: 'Ort, Datum | Unterschrift', dep: 'pdf_signature', help: 'set_pdf_signature_labels_help' },
+            { key: 'pdf_template', type: 'pdftemplate', label: 'set_pdf_template', def: '', dep: 'pdf', help: 'set_pdf_template_help' }
         ] },
         { title: 's_store', help: 's_store_help', items: [
             { key: 'store_yform', type: 'checkbox', label: 'set_store_yform', def: false, help: 'set_store_yform_help' },
@@ -447,6 +451,7 @@
         this.allValueFields().forEach(function (f) { if (f.type === 'email') { emailFields[f.name] = f.label || f.name; } });
         var value = function (item) { return self.settings[item.key] === undefined ? item.def : self.settings[item.key]; };
         var depending = {};
+        var hidden = {};
         SECTIONS.forEach(function (sec) { sec.items.forEach(function (item) { if (item.dep) { depending[item.dep] = true; } }); });
 
         SECTIONS.forEach(function (sec) {
@@ -458,7 +463,8 @@
                 fs.appendChild(el('p', {}, [el('a', { href: self.config.settingsUrl }, [el('i', { class: 'rex-icon fa-sliders', 'aria-hidden': 'true' }), ' ' + self.t('s_spam_link')])]));
             }
             sec.items.forEach(function (item) {
-                if (item.dep && !value({ key: item.dep, def: self.itemDefault(item.dep) })) { return; }
+                // abhängige Optionen nur zeigen, wenn ihr Schalter (und dessen Schalter) an ist
+                if (item.dep && (hidden[item.dep] || !value({ key: item.dep, def: self.itemDefault(item.dep) }))) { hidden[item.key] = true; return; }
                 var label = self.t(item.label);
                 var help = item.help ? self.t(item.help) : '';
                 var onchange = function (v) {
@@ -473,6 +479,10 @@
                     var opts = {};
                     Object.keys(item.options).forEach(function (k) { opts[k] = self.t(item.options[k]); });
                     control = self.input(label, 'select', value(item), onchange, help, opts);
+                } else if (item.type === 'pdftemplate') {
+                    var tpls = { '': self.t('set_pdf_template_default') };
+                    Object.keys(self.config.pdfTemplates || {}).forEach(function (k) { tpls[k] = self.config.pdfTemplates[k]; });
+                    control = self.input(label, 'select', value(item), onchange, help, tpls);
                 } else if (item.key === 'yform_table') {
                     control = self.input(label, 'text', value(item), onchange, help + ' ' + self.config.yformTable);
                 } else {

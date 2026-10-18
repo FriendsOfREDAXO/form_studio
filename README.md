@@ -45,6 +45,14 @@ document.addEventListener('fs:step', e => console.log(e.detail.index, e.detail.t
 
 Mit „Statistik“ an wird zusätzlich `dataLayer.push({event: 'fs_step', fs_form: …})` usw. ausgeführt.
 
+## PDF
+
+Mit dem AddOn **pdfout** erzeugt Form Studio je Einsendung ein PDF: zum Herunterladen nach dem Absenden und als Anhang der E-Mails (je getrennt schaltbar). Im Builder unter **Einstellungen → PDF**: Titel, Einleitung, **Schlusstext**, **Unterschriftszeilen** (Beschriftungen mit `|` trennen) und die **Vorlage**.
+
+**Eigene Vorlagen** legen Sie unter Form Studio → Einstellungen → **PDF-Vorlagen** an. Jede Vorlage ist ein (inaktives) REDAXO-Template mit dem Schlüssel `form_studio_pdf…`, angelegt als Kopie des Standard-Layouts, und wird unter **Templates** bearbeitet. Im Template stehen dieselben Daten wie im Fragment bereit: `$this->getVar('form')`, `'submission'`, `'sender'`, `'logo'`. Fehlt die gewählte Vorlage, gilt das Standard-Layout (`fragments/form_studio/pdf.php`, im project-AddOn überschreibbar).
+
+Einsendungen (und damit der PDF-Download) werden nach der eingestellten Frist gelöscht; PDFs werden nicht dauerhaft auf dem Server abgelegt.
+
 ## Formular aus YForm-Tabelle übernehmen
 
 Unter **Neues Formular → Quelle „YForm-Tabelle übernehmen“** wird eine bestehende Tabelle eingelesen (Umstieg z. B. von formslider): jedes `fieldset` beginnt einen Schritt, Validierung `empty` wird zu „Pflichtfeld“, `email` zu einem E-Mail-Feld, `checkbox` zum Ja/Nein-Schalter. Was nicht übernommen werden kann (z. B. Upload), wird angezeigt. Speichern in die Tabelle bleibt zunächst aus; wird es eingeschaltet, ergänzt Form Studio die Spalten `fs_created` und `fs_domain`.
