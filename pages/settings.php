@@ -14,7 +14,7 @@ if (rex_addon::get('yrewrite')->isAvailable()) {
     }
 }
 
-if ('post' === rex_request::requestMethod()) {
+if ('post' === rex_request::requestMethod() && 'pdf_template_create' !== rex_post('func', 'string', '')) {
     if (!$csrf->isValid()) {
         echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {
@@ -97,3 +97,37 @@ $fragment->setVar('title', 'Absender, Datenschutz & Spamschutz', false);
 $fragment->setVar('body', $content, false);
 $fragment->setVar('buttons', '<button class="btn btn-save" type="submit">Speichern</button>', false);
 echo '<form method="post" action="' . rex_url::currentBackendPage() . '">' . $csrf->getHiddenField() . $fragment->parse('core/page/section.php') . '</form>';
+
+// PDF-Vorlagen: Kopien des Standard-Layouts als REDAXO-Templates, im Formular unter „PDF“ auswählbar
+$pdfCsrf = rex_csrf_token::factory('form_studio_pdf_templates');
+if ('post' === rex_request::requestMethod() && 'pdf_template_create' === rex_post('func', 'string', '')) {
+    if (!$pdfCsrf->isValid()) {
+        echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
+    } else {
+        $name = trim(rex_post('pdf_template_name', 'string', '')) ?: rex_i18n::msg('form_studio_pdf_tpl_default_name');
+        $newId = FriendsOfRedaxo\FormStudio\PdfTemplates::create($name);
+        echo rex_view::success(rex_i18n::msg('form_studio_pdf_tpl_created', rex_escape($name)) . ' <a href="' . rex_url::backendPage('templates', ['function' => 'edit', 'template_id' => $newId]) . '">' . rex_i18n::msg('form_studio_pdf_tpl_edit') . '</a>');
+    }
+}
+$pdfTemplates = rex_sql::factory()->getArray('SELECT id, `key`, name FROM ' . rex::getTable('template') . ' WHERE `key` LIKE ? ORDER BY name', [FriendsOfRedaxo\FormStudio\PdfTemplates::KEY_PREFIX . '%']);
+$pdfBody = '<p>' . rex_i18n::msg('form_studio_pdf_tpl_help') . '</p>';
+if (!FriendsOfRedaxo\FormStudio\Pdf::available()) {
+    $pdfBody .= rex_view::warning(rex_i18n::msg('form_studio_pdf_tpl_no_pdfout'));
+}
+if ($pdfTemplates) {
+    $pdfBody .= '<ul class="list-unstyled">';
+    foreach ($pdfTemplates as $row) {
+        $pdfBody .= '<li><i class="rex-icon fa-file-pdf-o" aria-hidden="true"></i> <a href="' . rex_url::backendPage('templates', ['function' => 'edit', 'template_id' => (int) $row['id']]) . '">' . rex_escape((string) $row['name']) . '</a> <code>' . rex_escape((string) $row['key']) . '</code></li>';
+    }
+    $pdfBody .= '</ul>';
+} else {
+    $pdfBody .= '<p class="text-muted">' . rex_i18n::msg('form_studio_pdf_tpl_none') . '</p>';
+}
+$pdfBody .= '<div class="form-inline"><input type="hidden" name="func" value="pdf_template_create">'
+    . '<label for="fs-pdf-tpl-name">' . rex_i18n::msg('form_studio_pdf_tpl_name') . '</label> '
+    . '<input class="form-control" id="fs-pdf-tpl-name" name="pdf_template_name" placeholder="' . rex_escape(rex_i18n::msg('form_studio_pdf_tpl_default_name')) . '"> '
+    . '<button class="btn btn-default" type="submit"><i class="rex-icon fa-plus" aria-hidden="true"></i> ' . rex_i18n::msg('form_studio_pdf_tpl_create') . '</button></div>';
+$fragment = new rex_fragment();
+$fragment->setVar('title', rex_i18n::msg('form_studio_pdf_tpl_title'), false);
+$fragment->setVar('body', $pdfBody, false);
+echo '<form method="post" action="' . rex_url::currentBackendPage() . '">' . $pdfCsrf->getHiddenField() . $fragment->parse('core/page/section.php') . '</form>';

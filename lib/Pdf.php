@@ -26,6 +26,11 @@ final class Pdf
         $fragment->setVar('submission', $submission, false);
         $fragment->setVar('sender', $sender, false);
         $fragment->setVar('logo', self::logoDataUri($sender['logo']), false);
+        // Eigene Vorlage (REDAXO-Template) – fehlt sie, gilt das Standard-Layout
+        $template = (string) $form->setting('pdf_template', '');
+        if ('' !== $template && null !== ($html = PdfTemplates::render($template, $fragment))) {
+            return $html;
+        }
         return $fragment->parse('form_studio/pdf.php');
     }
 

@@ -5,6 +5,7 @@ namespace FriendsOfRedaxo\FormStudio;
 use rex_addon;
 use rex_clang;
 use rex_csrf_token;
+use rex_i18n;
 use rex_media;
 use rex_url;
 
@@ -17,8 +18,9 @@ final class Renderer
     /**
      * @param array<string, mixed> $values bisherige Eingaben (nach Fehlern)
      * @param array<string, string> $errors Feldname => Meldung
+     * @param array{success_text?: string, wrapper_class?: string} $options Vorgaben je Platzierung (Modul)
      */
-    public static function render(Form $form, array $values = [], array $errors = [], string $formError = ''): string
+    public static function render(Form $form, array $values = [], array $errors = [], string $formError = '', array $options = []): string
     {
         $id = 'fs-' . $form->id;
         $steps = $form->steps();
@@ -27,11 +29,13 @@ final class Renderer
             $values = self::presets($form);
         }
         $visible = $form->visibility($values);
+        $config = self::clientConfig($form, $multi);
 
-        $html = '<div class="fs" id="' . $id . '">';
+        $html = '<div class="fs' . self::wrapperClass($options) . '" id="' . $id . '">';
         $html .= self::assets();
         $html .= '<form class="fs-form" method="post" action="' . rex_escape(self::actionUrl()) . '#' . $id . '" novalidate data-fs-form'
-            . ($multi ? ' data-fs-steps="' . count($steps) . '"' : '') . '>';
+            . ($multi ? ' data-fs-steps="' . count($steps) . '"' : '')
+            . ($config ? ' data-fs-config="' . rex_escape(json_encode($config, JSON_UNESCAPED_UNICODE)) . '"' : '') . '>';
         $html .= '<input type="hidden" name="form_studio_id" value="' . $form->id . '">';
         $html .= rex_csrf_token::factory('form_studio_' . $form->id)->getHiddenField();
         $ts = Processor::timestamp();
@@ -64,6 +68,13 @@ final class Renderer
             $html .= '<li data-fs-progress-item="review" hidden><span class="fs-progress__nr" aria-hidden="true">✓</span><span class="fs-progress__label">'
                 . rex_escape((string) $form->setting('review_title', 'Überprüfen')) . '</span></li>';
             $html .= '</ol>';
+            if (!empty($config['counter'])) {
+                // Text „Schritt 2 von 5“ – füllt form-studio.js (übersprungene Schritte zählen nicht)
+                $html .= '<p class="fs-stepcount" data-fs-stepcount hidden></p>';
+            }
+            if (!empty($config['live'])) {
+                $html .= '<div class="fs-sr" role="status" aria-live="polite" aria-atomic="true" data-fs-live></div>';
+            }
         }
 
         foreach ($steps as $i => $step) {
@@ -126,13 +137,25 @@ final class Renderer
         return array_filter(array_intersect_key($clean, $choice), static fn ($v): bool => '' !== $v && [] !== $v);
     }
 
-    /** Erfolgsmeldung nach dem Absenden, optional mit PDF-Download */
-    public static function success(Form $form, string $token): string
+    /**
+     * Erfolgsmeldung nach dem Absenden, optional mit PDF-Download.
+     *
+     * @param array{success_text?: string, wrapper_class?: string} $options Vorgaben je Platzierung (Modul)
+     */
+    public static function success(Form $form, string $token, array $options = []): string
     {
-        $html = '<div class="fs" id="fs-' . $form->id . '">' . self::assets()
-            . '<div class="fs-success" role="status" tabindex="-1" data-fs-success>'
+        $text = trim((string) ($options['success_text'] ?? ''));
+        if ('' === $text) {
+            $text = (string) $form->setting('success_text', 'Wir melden uns schnellstmöglich bei Ihnen.');
+        }
+        // Erfolgsseite braucht nur Entwurf (verwerfen) und dataLayer
+        $config = array_intersect_key(self::clientConfig($form, false), ['draft' => 1, 'datalayer' => 1, 'key' => 1]);
+        $config = isset($config['draft']) || isset($config['datalayer']) ? $config : [];
+        $html = '<div class="fs' . self::wrapperClass($options) . '" id="fs-' . $form->id . '">' . self::assets()
+            . '<div class="fs-success" role="status" tabindex="-1" data-fs-success'
+            . ($config ? ' data-fs-config="' . rex_escape(json_encode($config, JSON_UNESCAPED_UNICODE)) . '"' : '') . '>'
             . '<h2 class="fs-success__title">' . rex_escape((string) $form->setting('success_title', 'Vielen Dank für Ihre Anfrage!')) . '</h2>'
-            . '<p>' . nl2br(rex_escape((string) $form->setting('success_text', 'Wir melden uns schnellstmöglich bei Ihnen.'))) . '</p>';
+            . '<p>' . nl2br(rex_escape($text)) . '</p>';
         if ($form->setting('pdf', true) && '' !== $token) {
             // frontendController() liefert die URL bereits HTML-maskiert (&amp;) – nicht erneut escapen
             $url = rex_url::frontendController(['rex-api-call' => 'form_studio_pdf', 'token' => $token]);
@@ -227,8 +250,21 @@ final class Renderer
                 return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
             case 'consent':
                 $control = '<label class="fs-consent"><input class="fs-check fs-check--checkbox" type="checkbox" id="' . $id . '" name="' . $inputName . '" value="1"' . (!empty($value) ? ' checked' : '') . $req . $aria . '> '
-                    . self::inlineLinks((string) ($field['text'] ?? $field['label'] ?? '')) . ($required ? ' <span class="fs-req" aria-hidden="true">*</span>' : '') . '</label>';
+                    . '<span class="fs-consent__text">' . self::inlineLinks((string) ($field['text'] ?? $field['label'] ?? '')) . ($required ? ' <span class="fs-req" aria-hidden="true">*</span>' : '') . '</span></label>';
                 return $wrap . $control . $err . '</div>';
+            case 'switch':
+                // Ja/Nein-Schalter: echte Checkbox mit role="switch"; Zustandstext nur per CSS (ohne JavaScript korrekt)
+                $on = trim((string) ($field['on_text'] ?? ''));
+                $off = trim((string) ($field['off_text'] ?? ''));
+                $on = '' !== $on ? $on : self::t('form_studio_switch_on', 'Ja');
+                $off = '' !== $off ? $off : self::t('form_studio_switch_off', 'Nein');
+                $checked = is_array($value) ? false : in_array(strtolower((string) $value), ['1', 'true', 'on', 'yes', 'ja'], true) || true === $value;
+                $control = '<label class="fs-switch"><input class="fs-switch__input" type="checkbox" role="switch" id="' . $id . '" name="' . $inputName . '" value="1"'
+                    . ($checked ? ' checked' : '') . $req . $aria . ' aria-labelledby="' . $id . '-label" data-fs-on="' . rex_escape($on) . '" data-fs-off="' . rex_escape($off) . '">'
+                    . '<span class="fs-switch__track" aria-hidden="true"></span>'
+                    . '<span class="fs-switch__state fs-switch__state--on" aria-hidden="true">' . rex_escape($on) . '</span>'
+                    . '<span class="fs-switch__state fs-switch__state--off" aria-hidden="true">' . rex_escape($off) . '</span></label>';
+                return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
             case 'counter':
                 $min = (int) ($field['min'] ?? 0);
                 $max = isset($field['max']) && '' !== $field['max'] ? (int) $field['max'] : null;
@@ -341,6 +377,77 @@ final class Renderer
             return '';
         }
         return ' data-fs-show-if="' . rex_escape(json_encode($cond, JSON_UNESCAPED_UNICODE)) . '"';
+    }
+
+    /** Wahrheitswert einer Einstellung (bool, 1/0, "1"/"0", "on") */
+    private static function flag(Form $form, string $key): bool
+    {
+        $value = $form->setting($key, false);
+        return is_string($value) ? in_array(strtolower(trim($value)), ['1', 'true', 'on', 'yes'], true) : (bool) $value;
+    }
+
+    /**
+     * Einstellungen für form-studio.js (formslider-Funktionen). Leer, solange alles aus ist –
+     * dann bleibt das Markup wie bisher.
+     *
+     * @return array<string, mixed>
+     */
+    private static function clientConfig(Form $form, bool $multi): array
+    {
+        $config = [];
+        if ($multi) {
+            $transition = (string) $form->setting('transition', 'none');
+            if (in_array($transition, ['slide', 'fade'], true)) {
+                $config['transition'] = $transition;
+            }
+            if (self::flag($form, 'progress_nav')) {
+                $config['nav'] = true;
+            }
+            if (self::flag($form, 'step_counter')) {
+                $config['counter'] = true;
+            }
+            if (self::flag($form, 'auto_advance')) {
+                $config['auto'] = true;
+            }
+        }
+        if (self::flag($form, 'draft')) {
+            $config['draft'] = 'fs-draft:' . ($form->key ?: $form->id);
+            $config['draftDays'] = max(1, min(365, (int) $form->setting('draft_days', 7)));
+        }
+        if (self::flag($form, 'datalayer')) {
+            $config['datalayer'] = true;
+        }
+        if (!$config) {
+            return [];
+        }
+        // Ansage des Schritts für Screenreader, sobald eine der Schritt-Funktionen aktiv ist
+        if ($multi && array_intersect_key($config, ['transition' => 1, 'nav' => 1, 'counter' => 1, 'auto' => 1])) {
+            $config['live'] = true;
+        }
+        $config['key'] = $form->key;
+        $config['i18n'] = [
+            'step' => self::t('form_studio_fe_step_counter', 'Schritt {0} von {1}'),
+            'stepLive' => self::t('form_studio_fe_step_live', 'Schritt {0} von {1}: {2}'),
+            'review' => (string) $form->setting('review_title', 'Überprüfen'),
+            'restored' => self::t('form_studio_fe_draft_restored', 'Ihre Eingaben wurden wiederhergestellt.'),
+            'clear' => self::t('form_studio_fe_draft_clear', 'Eingaben löschen'),
+            'cleared' => self::t('form_studio_fe_draft_cleared', 'Ihre gespeicherten Eingaben wurden gelöscht.'),
+        ];
+        return $config;
+    }
+
+    /** Zusätzliche CSS-Klassen für den Wrapper (Modul), nur sichere Zeichen */
+    private static function wrapperClass(array $options): string
+    {
+        $classes = preg_split('/\s+/', trim((string) ($options['wrapper_class'] ?? ''))) ?: [];
+        $classes = array_filter($classes, static fn ($c) => '' !== $c && preg_match('/^[A-Za-z_][\w-]*$/', $c));
+        return $classes ? ' ' . implode(' ', $classes) : '';
+    }
+
+    /** Text aus den Sprachdateien, mit deutscher Vorgabe, falls der Schlüssel (noch) fehlt */
+    private static function t(string $key, string $fallback): string
+    {
+        return rex_i18n::hasMsg($key) ? rex_i18n::msg($key) : $fallback;
     }
 
     private static function attr(string $name, mixed $value): string
