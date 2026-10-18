@@ -7,7 +7,7 @@ Visueller Formular-Builder für REDAXO: Formulare in **Schritten** mit **Bedingu
 ## Funktionen
 
 - **Builder im Backend** (Form Studio → Formulare): Feldpalette, Schritte, Drag & Drop, Eigenschaften je Feldtyp, Bedingungs-Editor, Einstellungen.
-- **16 Feldtypen**: Text, E-Mail, Telefon, Zahl, Zähler (− / +), mehrzeiliger Text, Datum (mit Mindestvorlauf), Uhrzeit, Auswahlliste, Einfach-/Mehrfachauswahl, **Bildkacheln** (z. B. Bestuhlung), Einwilligung (mit Links), Zwischenüberschrift, Hinweistext, verstecktes Feld. Weitere über den Extension Point `FORM_STUDIO_FIELD_TYPES`.
+- **17 Feldtypen**: Text, E-Mail, Telefon, Zahl, Zähler (− / +), mehrzeiliger Text, Datum (mit Mindestvorlauf), Uhrzeit, Auswahlliste, Einfach-/Mehrfachauswahl, **Bildkacheln** (z. B. Bestuhlung), Einwilligung (mit Links), **Ja/Nein-Schalter**, Zwischenüberschrift, Hinweistext, verstecktes Feld. Weitere über den Extension Point `FORM_STUDIO_FIELD_TYPES`.
 - **Bedingungen** für Felder und ganze Schritte („anzeigen, wenn …“, alle/eine der Regeln; ist gleich, enthält, ist eines von, ausgefüllt, größer/kleiner …) – im Browser **und** auf dem Server ausgewertet. Ausgeblendete Felder werden weder geprüft noch gespeichert.
 - **Mehrstufiger Assistent** mit Fortschritt, Prüfung pro Schritt und Zusammenfassung vor dem Absenden. Ohne JavaScript ein normales Formular.
 - **Speichern**: optional in YForm (Tabelle und Felder werden angelegt/ergänzt, nie gelöscht).
@@ -17,13 +17,47 @@ Visueller Formular-Builder für REDAXO: Formulare in **Schritten** mit **Bedingu
 - **Datenschutz**: Einsendungen für den PDF-Download werden nach einstellbarer Frist automatisch gelöscht.
 - **Vorlagen**: „Bankettplaner“ (Anlass, Termin, Gäste, Bestuhlung mit Grafiken, Verpflegung, Technik, Kontakt) und „Kontaktformular“. Eigene über `FORM_STUDIO_TEMPLATES`.
 
+## Ablauf und Darstellung (je Formular einschaltbar)
+
+Alles im Builder unter **Einstellungen → Ablauf & Darstellung**. Standard ist jeweils „aus“ – bestehende Formulare bleiben unverändert.
+
+- **Übergang zwischen Schritten**: keiner, gleiten oder überblenden. Bei „Bewegung reduzieren“ im System immer ohne Animation.
+- **Fortschritt anklickbar**: erreichte Schritte sind Knöpfe; nach vorn nur, wenn die Schritte davor gültig sind.
+- **Schrittanzeige** „Schritt 2 von 5“; übersprungene (bedingte) Schritte zählen nicht mit. Schrittwechsel werden Screenreadern angesagt.
+- **Automatisch weiter** nach einer Einfachauswahl (Optionen, Bildkacheln), wenn es das letzte Feld des Schritts ist – nicht beim Blättern mit den Pfeiltasten.
+- **Zwischenstand im Browser**: Eingaben bleiben beim Verlassen der Seite im Browser (localStorage) erhalten, mit Hinweis und Knopf „Eingaben löschen“; nach dem Absenden und nach Ablauf (Tage einstellbar) gelöscht. Einwilligungen, versteckte Felder und Bildkacheln werden nie gespeichert.
+- **Statistik**: Ereignisse zusätzlich an `window.dataLayer` (Google Tag Manager u. a.).
+
+### JavaScript-Ereignisse
+
+Am `<form>` (bzw. an der Erfolgsmeldung) werden immer `CustomEvent`s ausgelöst, sie steigen auf (`bubbles`):
+
+| Ereignis | `detail` |
+| --- | --- |
+| `fs:step` | `index`, `total`, `title`, `review` (Prüfseite), `form` (Schlüssel) |
+| `fs:submit` | `form` |
+| `fs:success` | `form` |
+| `fs:draft-restored` | `form` |
+
+```js
+document.addEventListener('fs:step', e => console.log(e.detail.index, e.detail.title));
+```
+
+Mit „Statistik“ an wird zusätzlich `dataLayer.push({event: 'fs_step', fs_form: …})` usw. ausgeführt.
+
+## Formular aus YForm-Tabelle übernehmen
+
+Unter **Neues Formular → Quelle „YForm-Tabelle übernehmen“** wird eine bestehende Tabelle eingelesen (Umstieg z. B. von formslider): jedes `fieldset` beginnt einen Schritt, Validierung `empty` wird zu „Pflichtfeld“, `email` zu einem E-Mail-Feld, `checkbox` zum Ja/Nein-Schalter. Was nicht übernommen werden kann (z. B. Upload), wird angezeigt. Speichern in die Tabelle bleibt zunächst aus; wird es eingeschaltet, ergänzt Form Studio die Spalten `fs_created` und `fs_domain`.
+
 ## Einbindung
 
-Bei der Installation wird das Modul **„Form Studio: Formular“** angelegt – Formular auswählen, fertig. In PHP:
+Bei der Installation wird das Modul **„Form Studio: Formular“** angelegt – Formular auswählen, fertig. Je Platzierung optional: eigener Dankestext und zusätzliche CSS-Klassen. Im Backend zeigt das Modul eine Vorschau (Schritte und erster Schritt). Inaktive Formulare (Schalter „Aktiv“ im Builder) erscheinen im Frontend nicht. In PHP:
 
 ```php
 $form = FriendsOfRedaxo\FormStudio\Form::getByKey('bankettplaner');
 echo FriendsOfRedaxo\FormStudio\Processor::handle($form);
+// optional je Platzierung:
+echo FriendsOfRedaxo\FormStudio\Processor::handle($form, ['success_text' => 'Danke!', 'wrapper_class' => 'mein-rahmen']);
 ```
 
 ## Gestaltung
@@ -58,6 +92,8 @@ Form Studio bringt eigenes, framework-freies CSS mit (`assets/form-studio.css`, 
 | `--fs-title-size` / `--fs-title-color` / `--fs-title-weight` | | Schritt-Überschriften |
 | `--fs-button-height` / `--fs-button-padding` / `--fs-button-radius` | `40px` / `0 30px` / `var(--fs-radius)` | Buttons |
 | `--fs-button-transform` / `--fs-button-spacing` / `--fs-button-size` / `--fs-button-weight` | `none` / `normal` / `0.875rem` / `400` | Button-Schrift |
+
+| `--fs-transition-duration` / `--fs-transition-distance` | `0.32s` / `2rem` | Übergang zwischen Schritten (gleiten/überblenden) |
 
 Feldbreiten (`width` in der Definition: `1-2`, `1-3`, `2-3`, `1-4`, `3-4`) gelten ab 640 px; darunter sind alle Felder einspaltig.
 

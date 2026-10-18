@@ -23,7 +23,51 @@
         }
     }
 
+    function config(node) {
+        try { return JSON.parse(node.getAttribute('data-fs-config') || '{}') || {}; } catch (e) { return {}; }
+    }
+
+    function format(text, args) {
+        return String(text || '').replace(/\{(\d+)\}/g, function (m, i) { return args[+i] == null ? '' : args[+i]; });
+    }
+
+    // Ereignisse für Statistik/Tracking: CustomEvent am Element, optional window.dataLayer (Einstellung „datalayer“)
+    function emit(target, cfg, name, detail) {
+        detail = detail || {};
+        var wrap = target.closest('.fs');
+        detail.form = cfg.key || (wrap ? wrap.id.replace(/^fs-/, '') : '');
+        var ev;
+        try {
+            ev = new CustomEvent('fs:' + name, { bubbles: true, detail: detail });
+        } catch (e) {
+            ev = document.createEvent('CustomEvent');
+            ev.initCustomEvent('fs:' + name, true, false, detail);
+        }
+        target.dispatchEvent(ev);
+        if (cfg.datalayer && window.dataLayer && typeof window.dataLayer.push === 'function') {
+            var data = { event: 'fs_' + name.replace(/-/g, '_') };
+            Object.keys(detail).forEach(function (k) { data['fs_' + k] = detail[k]; });
+            window.dataLayer.push(data);
+        }
+    }
+
+    function store() {
+        try { return window.localStorage || null; } catch (e) { return null; }
+    }
+
+    function dropDraft(key) {
+        var ls = store();
+        if (!ls || !key) { return; }
+        try { ls.removeItem(key); } catch (e) { /* Speicher gesperrt */ }
+    }
+
+    function reducedMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
     function init(form) {
+        var cfg = config(form);
+        var i18n = cfg.i18n || {};
         // Spamschutz: Nachweis, dass ein echter Browser das Formular ausfüllt (erst bei Interaktion)
         var proof = form.querySelector('[data-fs-proof]');
         if (proof) {
@@ -41,6 +85,55 @@
         var submit = form.querySelector('[data-fs-submit]');
         var multi = steps.length > 1;
         var current = 0;
+        var shown = null; // zuletzt gezeigter Schritt (für Ereignisse und Übergänge)
+        var reached = 0; // weitester erreichter Schritt (klickbarer Fortschritt)
+        var live = form.querySelector('[data-fs-live]');
+        var stepCount = form.querySelector('[data-fs-stepcount]');
+
+        function stepTitle(step, index) {
+            var legend = step && step.querySelector('legend');
+            return legend ? legend.textContent.trim() : 'Schritt ' + (index + 1);
+        }
+
+        // Übergang zwischen den Schritten (Einstellung „transition“); bei reduzierter Bewegung aus
+        function animate(node, dir) {
+            if (!cfg.transition || reducedMotion() || !node) { return; }
+            var cls = 'fs-anim-' + cfg.transition;
+            node.classList.remove('fs-anim-slide', 'fs-anim-fade', 'fs-anim--back');
+            void node.offsetWidth;
+            form.classList.add('fs-form--animating');
+            node.classList.add(cls);
+            node.classList.toggle('fs-anim--back', dir < 0);
+            var done = function () {
+                node.classList.remove(cls, 'fs-anim--back');
+                form.classList.remove('fs-form--animating');
+                node.removeEventListener('animationend', done);
+            };
+            node.addEventListener('animationend', done);
+            setTimeout(done, 600);
+        }
+
+        // Klickbarer Fortschritt (Einstellung „progress_nav“): erreichte Schritte als Schaltfläche
+        function progressButton(item, clickable, isCurrent) {
+            var btn = item.querySelector('.fs-progress__btn');
+            if (clickable && !btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'fs-progress__btn';
+                btn.setAttribute('data-fs-jump', item.getAttribute('data-fs-progress-item'));
+                while (item.firstChild) { btn.appendChild(item.firstChild); }
+                item.appendChild(btn);
+            } else if (!clickable && btn) {
+                while (btn.firstChild) { item.insertBefore(btn.firstChild, btn); }
+                item.removeChild(btn);
+                btn = null;
+            }
+            if (btn) {
+                // aria-current gehört an das bedienbare Element
+                item.removeAttribute('aria-current');
+                if (isCurrent) { btn.setAttribute('aria-current', 'step'); } else { btn.removeAttribute('aria-current'); }
+            }
+        }
 
         function values() {
             var out = {};
@@ -97,6 +190,19 @@
                 });
                 if (!multi) { step.hidden = !stepVisible; }
             });
+            // Klickbarer Fortschritt folgt ein- und ausgeblendeten Schritten
+            if (cfg.nav && shown) {
+                var list = visibleSteps();
+                progress.forEach(function (p) {
+                    var key = p.getAttribute('data-fs-progress-item');
+                    var i = 'review' === key ? list.length : list.indexOf(steps[+key]);
+                    progressButton(p, i !== -1 && !p.hidden && i <= reached, i === current);
+                });
+            }
+            // Zähler „Schritt 2 von 5“ folgt übersprungenen Schritten sofort
+            if (stepCount && shown && shown !== review && visibleSteps().indexOf(shown) !== -1) {
+                stepCount.textContent = format(i18n.step, [visibleSteps().indexOf(shown) + 1, visibleSteps().length]);
+            }
             // Werte ausgeblendeter Felder zählen nicht – neu einlesen für abhängige Bedingungen
             return visible;
         }
@@ -110,7 +216,11 @@
             var list = visibleSteps();
             var max = review ? list.length : list.length - 1;
             index = Math.max(0, Math.min(index, max));
+            var previous = current;
+            var target = review && index === list.length ? review : list[index];
+            var changed = shown !== target;
             current = index;
+            reached = Math.max(reached, index);
             var inReview = review && index === list.length;
             steps.forEach(function (s) { s.hidden = inReview || s !== list[index]; });
             if (review) {
@@ -127,7 +237,21 @@
                 p.classList.toggle('is-done', i !== -1 && i < index);
                 p.classList.toggle('is-current', i === index);
                 if (i === index) { p.setAttribute('aria-current', 'step'); } else { p.removeAttribute('aria-current'); }
+                if (cfg.nav) { progressButton(p, i !== -1 && !p.hidden && i <= reached, i === index); }
             });
+            var title = inReview ? (i18n.review || '') : stepTitle(list[index], index);
+            if (stepCount) {
+                stepCount.textContent = inReview ? title : format(i18n.step, [index + 1, list.length]);
+                stepCount.hidden = false;
+            }
+            if (changed && shown) {
+                if (live) { live.textContent = inReview ? title : format(i18n.stepLive, [index + 1, list.length, title]); }
+                if (focus) { animate(target, index < previous ? -1 : 1); }
+            }
+            if (changed) {
+                shown = target;
+                emit(form, cfg, 'step', { index: index + 1, total: list.length, title: title, review: !!inReview });
+            }
             if (focus) {
                 var heading = inReview ? review.querySelector('h3') : (list[index].querySelector('legend') || list[index]);
                 heading.setAttribute('tabindex', '-1');
@@ -167,7 +291,7 @@
             var v = el.validity;
             if (v.valueMissing) {
                 if (el.type === 'radio') { return 'Bitte wählen Sie eine Option.'; }
-                if (el.type === 'checkbox') { return el.closest('.fs-consent') ? 'Bitte bestätigen Sie diesen Punkt.' : 'Bitte wählen Sie mindestens eine Option.'; }
+                if (el.type === 'checkbox') { return el.closest('.fs-consent, .fs-switch') ? 'Bitte bestätigen Sie diesen Punkt.' : 'Bitte wählen Sie mindestens eine Option.'; }
                 if (el.tagName === 'SELECT') { return 'Bitte wählen Sie einen Eintrag.'; }
                 return 'Bitte füllen Sie dieses Feld aus.';
             }
@@ -270,7 +394,9 @@
                 var text = [];
                 Array.prototype.forEach.call(field.querySelectorAll('input, select, textarea'), function (el) {
                     if (el.disabled || !el.name || (el.type === 'hidden' && !el.hasAttribute('data-a11y-fs'))) { return; }
-                    if ((el.type === 'radio' || el.type === 'checkbox')) {
+                    if (el.getAttribute('role') === 'switch') {
+                        text.push(el.getAttribute(el.checked ? 'data-fs-on' : 'data-fs-off') || (el.checked ? 'Ja' : 'Nein'));
+                    } else if ((el.type === 'radio' || el.type === 'checkbox')) {
                         if (el.checked) {
                             var l = el.closest('label');
                             text.push(l ? (l.querySelector('.fs-card__label') || l).textContent.trim() : el.value);
@@ -312,8 +438,9 @@
 
         form.addEventListener('input', apply);
         form.addEventListener('change', apply);
-        // Fehlermeldung eines Felds sofort entfernen, sobald es gültig ist (Auswahl, Karten, Checkboxen, Eingaben)
-        form.addEventListener('change', function (e) {
+        // Fehlermeldung eines Felds sofort entfernen, sobald es gültig ist (Auswahl, Karten, Checkboxen, Eingaben).
+        // Schon beim Tippen (input), nicht erst beim Verlassen: sonst verschiebt sich das Layout unter dem Mauszeiger und der Klick auf „Weiter“ geht ins Leere.
+        var clearFieldError = function (e) {
             var field = e.target.closest && e.target.closest('[data-fs-field]');
             if (!field || e.target.hasAttribute('data-a11y-fs')) { return; }
             var inputs = field.querySelectorAll('input[name], select[name], textarea[name]');
@@ -322,7 +449,9 @@
             Array.prototype.forEach.call(inputs, function (i) { i.removeAttribute('aria-invalid'); });
             var error = field.querySelector('.fs-error');
             if (error) { error.textContent = ''; }
-        });
+        };
+        form.addEventListener('input', clearFieldError);
+        form.addEventListener('change', clearFieldError);
         // Datums-Picker: Fehlermeldung sofort entfernen, sobald ein Wert gewählt wurde
         form.addEventListener('change', function (e) {
             var orig = e.target;
@@ -354,7 +483,68 @@
                 } else if (gotoBtn) {
                     e.preventDefault();
                     show(+gotoBtn.getAttribute('data-fs-goto'), true);
+                } else if (e.target.closest('[data-fs-jump]')) {
+                    e.preventDefault();
+                    var key = e.target.closest('[data-fs-jump]').getAttribute('data-fs-jump');
+                    jump('review' === key ? visibleSteps().length : visibleSteps().indexOf(steps[+key]));
                 }
+            });
+        }
+
+        // Sprung über den Fortschritt: vorwärts nur, wenn alle Schritte davor gültig sind
+        function jump(target) {
+            if (target < 0) { return; }
+            if (target <= current) {
+                if (target !== current) { show(target, true); }
+                return;
+            }
+            var list = visibleSteps();
+            for (var k = current; k < Math.min(target, list.length); k++) {
+                var step = list[k];
+                var was = step.hidden;
+                step.hidden = false;
+                var ok = stepValid(step);
+                step.hidden = was;
+                if (!ok) {
+                    if (k !== current) { show(k, true); }
+                    stepValid(step);
+                    return;
+                }
+            }
+            show(target, true);
+        }
+
+        // Stille Prüfung ohne Meldungen (für das automatische Weiterblättern)
+        function quietlyValid(step) {
+            return Array.prototype.every.call(step.querySelectorAll('input, select, textarea'), function (el) {
+                if (el.disabled || el.closest('[hidden]') || !el.name) { return true; }
+                if (el.hasAttribute('data-a11y-fs')) { return !el.required || !!el.value; }
+                return el.checkValidity();
+            });
+        }
+
+        // Automatisch weiter nach einer Einfachauswahl im letzten Feld des Schritts (Einstellung „auto_advance“).
+        // Nicht bei Pfeiltasten – dort wählt man beim Durchgehen nur aus.
+        if (multi && cfg.auto) {
+            var arrowAt = 0;
+            var autoTimer = null;
+            form.addEventListener('keydown', function (e) {
+                if (/^Arrow/.test(e.key)) { arrowAt = Date.now(); }
+            });
+            form.addEventListener('change', function (e) {
+                var t = e.target;
+                if (t.type !== 'radio' || !t.checked || Date.now() - arrowAt < 600) { return; }
+                var step = visibleSteps()[current];
+                if (!step || !step.contains(t)) { return; }
+                var fields = Array.prototype.filter.call(step.querySelectorAll('[data-fs-field]'), function (f) {
+                    return !f.hidden && f.querySelector('input:not([type=hidden]), select, textarea');
+                });
+                if (fields[fields.length - 1] !== t.closest('[data-fs-field]')) { return; }
+                if (!review && current >= visibleSteps().length - 1) { return; }
+                clearTimeout(autoTimer);
+                autoTimer = setTimeout(function () {
+                    if (visibleSteps()[current] === step && t.checked && quietlyValid(step)) { show(current + 1, true); }
+                }, 350);
             });
         }
 
@@ -372,8 +562,15 @@
                 if (multi) { show(visibleSteps().indexOf(invalid[0]), true); }
                 return;
             }
+            emit(form, cfg, 'submit', {});
             if (submit) { submit.disabled = true; submit.setAttribute('aria-busy', 'true'); }
         });
+
+        // Entwurf im Browser (Einstellung „draft“): Eingaben je Formular in localStorage, nie Einwilligungen/Versteckte/Passwörter
+        var restored = false;
+        if (cfg.draft) {
+            restored = draft();
+        }
 
         apply();
         // Nach Serverfehlern: Schritt mit dem ersten Fehler zeigen
@@ -384,6 +581,98 @@
         }
         var summaryBox = form.querySelector('[data-fs-error-summary]');
         if (summaryBox) { summaryBox.focus(); }
+        if (restored) { emit(form, cfg, 'draft-restored', {}); }
+
+        function draftable(el) {
+            if (!el.name || !/^fs\[/.test(el.name) || /^(hidden|password|file|submit|button)$/.test(el.type)) { return false; }
+            if (el.closest('.fs-consent')) { return false; }
+            var auto = el.getAttribute('autocomplete') || '';
+            return !/pass|pwd|iban|cvc|cvv|kreditkarte|credit/i.test(el.name) && !/password|^cc-|one-time-code/.test(auto);
+        }
+
+        function draft() {
+            var ls = store();
+            if (!ls) { return false; }
+            var saveTimer = null;
+            var save = function () {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                var data = {};
+                Array.prototype.forEach.call(form.elements, function (el) {
+                    if (!draftable(el)) { return; }
+                    if (el.type === 'radio' || el.type === 'checkbox') {
+                        data[el.name] = data[el.name] || [];
+                        if (el.checked) { data[el.name].push(el.value); }
+                    } else {
+                        data[el.name] = el.value;
+                    }
+                });
+                try { ls.setItem(cfg.draft, JSON.stringify({ t: Date.now(), v: data })); } catch (e) { /* voll oder gesperrt */ }
+            };
+            var later = function () {
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(save, 400);
+            };
+            form.addEventListener('input', later);
+            form.addEventListener('change', later);
+            window.addEventListener('pagehide', function () { if (saveTimer) { save(); } });
+
+            // Nach Serverfehlern oder mit Vorbelegung per Link gelten die Werte der Seite
+            if (form.querySelector('[data-fs-error-summary]') || /[?&]fs_preset/.test(window.location.search)) { return false; }
+            var stored = null;
+            try { stored = JSON.parse(ls.getItem(cfg.draft) || 'null'); } catch (e) { stored = null; }
+            if (!stored || !stored.v || typeof stored.v !== 'object') { return false; }
+            if (!stored.t || Date.now() - stored.t > (cfg.draftDays || 7) * 864e5) {
+                dropDraft(cfg.draft);
+                return false;
+            }
+            var changed = false;
+            Array.prototype.forEach.call(form.elements, function (el) {
+                if (!draftable(el) || !(el.name in stored.v)) { return; }
+                var v = stored.v[el.name];
+                if (el.type === 'radio' || el.type === 'checkbox') {
+                    var on = Array.isArray(v) && v.indexOf(el.value) !== -1;
+                    if (el.checked !== on) { el.checked = on; changed = true; }
+                } else if (typeof v === 'string' && el.value !== v) {
+                    el.value = v;
+                    changed = true;
+                    if (el._flatpickr) { el._flatpickr.setDate(v || null, false); }
+                }
+            });
+            if (!changed) { return false; }
+            notice(save, function () { clearTimeout(saveTimer); saveTimer = null; });
+            return true;
+        }
+
+        // Hinweis „Ihre Eingaben wurden wiederhergestellt“ mit „Eingaben löschen“
+        function notice(save, stop) {
+            var box = el('div', 'fs-draft');
+            box.setAttribute('role', 'status');
+            var text = el('p', 'fs-draft__text', i18n.restored || '');
+            var btn = el('button', 'fs-link-button fs-draft__clear', i18n.clear || '');
+            btn.type = 'button';
+            box.appendChild(text);
+            box.appendChild(btn);
+            var anchor = form.querySelector('[data-fs-progress]') || form.querySelector('[data-fs-step]');
+            anchor.parentNode.insertBefore(box, anchor);
+            btn.addEventListener('click', function () {
+                stop();
+                dropDraft(cfg.draft);
+                form.reset();
+                Array.prototype.forEach.call(form.querySelectorAll('input[data-a11y-fs]'), function (orig) {
+                    if (orig._flatpickr) { orig._flatpickr.setDate(orig.defaultValue || null, false); }
+                });
+                Array.prototype.forEach.call(form.querySelectorAll('[aria-invalid="true"]'), function (n) { n.removeAttribute('aria-invalid'); });
+                Array.prototype.forEach.call(form.querySelectorAll('.fs-error'), function (n) { n.textContent = ''; });
+                apply();
+                reached = 0;
+                if (multi) { show(0, false); }
+                text.textContent = i18n.cleared || '';
+                box.removeChild(btn);
+                box.setAttribute('tabindex', '-1');
+                box.focus();
+            });
+        }
     }
 
     function boot() {
@@ -392,7 +681,16 @@
             init(f);
         });
         var success = document.querySelector('[data-fs-success]');
-        if (success) { success.focus(); }
+        if (success) {
+            success.focus();
+            if (!success.hasAttribute('data-fs-ready')) {
+                success.setAttribute('data-fs-ready', '');
+                var cfg = config(success);
+                // Abgeschickt: gespeicherten Entwurf verwerfen
+                if (cfg.draft) { dropDraft(cfg.draft); }
+                emit(success, cfg, 'success', {});
+            }
+        }
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); } else { boot(); }

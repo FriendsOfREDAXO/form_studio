@@ -10,24 +10,52 @@
         options: 'Auswahlmöglichkeiten', multiple: 'Mehrfachauswahl erlauben', columns: 'Kacheln pro Reihe', inline: 'Nebeneinander anzeigen',
         text: 'Text', level: 'Größe', style: 'Darstellung', show_if: 'Anzeigen, wenn …'
     };
-    var SETTINGS = [
-        ['submit_label', 'text', 'Beschriftung des Absende-Buttons', 'Anfrage senden'],
-        ['success_title', 'text', 'Überschrift nach dem Absenden', 'Vielen Dank für Ihre Anfrage!'],
-        ['success_text', 'textarea', 'Text nach dem Absenden', 'Wir melden uns schnellstmöglich bei Ihnen.'],
-        ['mail_to', 'text', 'E-Mail an (mehrere mit Komma; leer = E-Mail des Absenders aus den Einstellungen)', ''],
-        ['mail_subject', 'text', 'Betreff der E-Mail an Sie', ''],
-        ['copy_to_sender', 'checkbox', 'Kopie an die anfragende Person senden', true],
-        ['sender_field', 'emailfield', 'E-Mail-Feld der anfragenden Person', ''],
-        ['copy_subject', 'text', 'Betreff der Kopie', ''],
-        ['copy_intro', 'textarea', 'Einleitung der Kopie', ''],
-        ['store_yform', 'checkbox', 'Einsendungen in YForm-Tabelle speichern', false],
-        ['yform_table', 'text', 'Tabellenname (leer = automatisch)', ''],
-        ['pdf', 'checkbox', 'PDF erzeugen (Download nach dem Absenden)', true],
-        ['pdf_attach_team', 'checkbox', 'PDF an die E-Mail ans Hotel anhängen', true],
-        ['pdf_attach_copy', 'checkbox', 'PDF an die Kopie für die anfragende Person anhängen', true],
-        ['pdf_title', 'text', 'Titel im PDF', ''],
-        ['pdf_intro', 'textarea', 'Einleitung im PDF', '']
+    var PROP_I18N = { on_text: 'b_on_text', off_text: 'b_off_text' };
+    // Einstellungen des Formulars, gruppiert für Redakteure. Texte kommen aus den Sprachdateien (config.i18n).
+    // Felder: key, type, label, Standardwert, Hilfetext, Auswahl (für select), abhängig von (Schalter)
+    var SECTIONS = [
+        { title: 's_flow', help: 's_flow_help', items: [
+            { key: 'submit_label', type: 'text', label: 'set_submit_label', def: 'Anfrage senden' },
+            { key: 'review_title', type: 'text', label: 'set_review_title', def: 'Überprüfen' },
+            { key: 'transition', type: 'select', label: 'set_transition', def: 'none', help: 'set_transition_help',
+                options: { none: 'set_transition_none', slide: 'set_transition_slide', fade: 'set_transition_fade' } },
+            { key: 'progress_nav', type: 'checkbox', label: 'set_progress_nav', def: false, help: 'set_progress_nav_help' },
+            { key: 'step_counter', type: 'checkbox', label: 'set_step_counter', def: false, help: 'set_step_counter_help' },
+            { key: 'auto_advance', type: 'checkbox', label: 'set_auto_advance', def: false, help: 'set_auto_advance_help' }
+        ] },
+        { title: 's_success', help: 's_success_help', items: [
+            { key: 'success_title', type: 'text', label: 'set_success_title', def: 'Vielen Dank für Ihre Anfrage!' },
+            { key: 'success_text', type: 'textarea', label: 'set_success_text', def: 'Wir melden uns schnellstmöglich bei Ihnen.', help: 'set_success_text_help' }
+        ] },
+        { title: 's_mail', help: 's_mail_help', items: [
+            { key: 'mail_to', type: 'text', label: 'set_mail_to', def: '', help: 'set_mail_to_help' },
+            { key: 'mail_subject', type: 'text', label: 'set_mail_subject', def: '' },
+            { key: 'copy_to_sender', type: 'checkbox', label: 'set_copy_to_sender', def: true },
+            { key: 'sender_field', type: 'emailfield', label: 'set_sender_field', def: '' },
+            { key: 'copy_subject', type: 'text', label: 'set_copy_subject', def: '', dep: 'copy_to_sender' },
+            { key: 'copy_intro', type: 'textarea', label: 'set_copy_intro', def: '', dep: 'copy_to_sender' }
+        ] },
+        { title: 's_pdf', help: 's_pdf_help', items: [
+            { key: 'pdf', type: 'checkbox', label: 'set_pdf', def: true },
+            { key: 'pdf_attach_team', type: 'checkbox', label: 'set_pdf_attach_team', def: true, dep: 'pdf' },
+            { key: 'pdf_attach_copy', type: 'checkbox', label: 'set_pdf_attach_copy', def: true, dep: 'pdf' },
+            { key: 'pdf_title', type: 'text', label: 'set_pdf_title', def: '', dep: 'pdf' },
+            { key: 'pdf_intro', type: 'textarea', label: 'set_pdf_intro', def: '', dep: 'pdf' }
+        ] },
+        { title: 's_store', help: 's_store_help', items: [
+            { key: 'store_yform', type: 'checkbox', label: 'set_store_yform', def: false, help: 'set_store_yform_help' },
+            { key: 'yform_table', type: 'text', label: 'set_yform_table', def: '', help: 'set_yform_table_help' }
+        ] },
+        { title: 's_draft', help: 's_draft_help', items: [
+            { key: 'draft', type: 'checkbox', label: 'set_draft', def: false, help: 'set_draft_help' },
+            { key: 'draft_days', type: 'number', label: 'set_draft_days', def: 7, dep: 'draft', min: 1, max: 365 }
+        ] },
+        { title: 's_analytics', help: 's_analytics_help', items: [
+            { key: 'datalayer', type: 'checkbox', label: 'set_datalayer', def: false, help: 'set_datalayer_help' }
+        ] },
+        { title: 's_spam', help: 's_spam_help', items: [] }
     ];
+    var mediaCounter = 0;
 
     function el(tag, attrs, children) {
         var e = document.createElement(tag);
@@ -55,6 +83,12 @@
     }
 
     Builder.prototype.fields = function () { return this.definition.steps[this.step].fields; };
+
+    /** Text aus den Sprachdateien (config.i18n, Schlüssel ohne Präfix form_studio_) */
+    Builder.prototype.t = function (key) {
+        var map = this.config.i18n || {};
+        return map['form_studio_' + key] || key;
+    };
 
     Builder.prototype.allValueFields = function (untilStep, untilIndex) {
         var out = [];
@@ -96,7 +130,7 @@
     Builder.prototype.renderPalette = function () {
         var self = this;
         var groups = { input: 'Eingabe', choice: 'Auswahl', layout: 'Gestaltung' };
-        var box = el('div', { class: 'fs-b-palette' }, [el('h4', { text: 'Feld hinzufügen' })]);
+        var box = el('div', { class: 'fs-b-palette' }, [el('h3', { class: 'h4', text: 'Feld hinzufügen' })]);
         Object.keys(groups).forEach(function (g) {
             box.appendChild(el('div', { class: 'fs-b-palette__group', text: groups[g] }));
             Object.keys(self.config.types).forEach(function (t) {
@@ -195,7 +229,7 @@
 
         if (this.selected === 'step' || this.selected === null) {
             var st = this.definition.steps[this.step];
-            body.appendChild(el('h4', { text: 'Schritt ' + (this.step + 1) }));
+            body.appendChild(el('h3', { class: 'h4', text: 'Schritt ' + (this.step + 1) }));
             body.appendChild(this.input('Titel', 'text', st.title || '', function (v) { st.title = v; self.renderCanvasOnly(); }));
             body.appendChild(this.input('Einleitung', 'textarea', st.intro || '', function (v) { st.intro = v; }));
             body.appendChild(this.conditionEditor(st, this.step, 0));
@@ -208,7 +242,7 @@
 
         var field = this.fields()[this.selected];
         var def = this.config.types[field.type];
-        body.appendChild(el('h4', {}, [el('i', { class: 'rex-icon fa ' + def.icon }), ' ' + def.label]));
+        body.appendChild(el('h3', { class: 'h4' }, [el('i', { class: 'rex-icon fa ' + def.icon, 'aria-hidden': 'true' }), ' ' + def.label]));
         var nameTouched = !!field.name && field.name !== slug(field.label || '');
         def.props.forEach(function (p) {
             if (p === 'label') {
@@ -221,6 +255,8 @@
                 var inp = self.input(PROP_LABELS.name, 'text', field.name || '', function (v) { nameTouched = true; field.name = slug(v); self.renderCanvasOnly(); }, 'Nur Kleinbuchstaben, Ziffern und _. Wird als Spalte in YForm verwendet.');
                 inp.querySelector('input').setAttribute('data-prop', 'name');
                 body.appendChild(inp);
+            } else if (p === 'default' && field.type === 'switch') {
+                body.appendChild(self.input(self.t('b_switch_default'), 'checkbox', field.default === true || field.default === '1' || field.default === 1, function (v) { if (v) { field.default = true; } else { delete field.default; } }));
             } else if (p === 'required' || p === 'multiple' || p === 'inline') {
                 body.appendChild(self.input(PROP_LABELS[p], 'checkbox', !!field[p], function (v) { field[p] = v; self.renderCanvasOnly(); }));
             } else if (p === 'width') {
@@ -239,7 +275,7 @@
                 body.appendChild(self.conditionEditor(field, self.step, self.selected));
             } else {
                 var type = ['min', 'max', 'step', 'rows', 'maxlength', 'min_days_ahead'].indexOf(p) !== -1 && field.type !== 'date' && field.type !== 'time' ? 'number' : (field.type === 'date' && (p === 'min' || p === 'max') ? 'date' : 'text');
-                body.appendChild(self.input(PROP_LABELS[p] || p, type, field[p] == null ? '' : field[p], function (v) { field[p] = type === 'number' && v !== '' ? Number(v) : v; }));
+                body.appendChild(self.input(PROP_LABELS[p] || (PROP_I18N[p] ? self.t(PROP_I18N[p]) : p), type, field[p] == null ? '' : field[p], function (v) { field[p] = type === 'number' && v !== '' ? Number(v) : v; }));
             }
         });
         return box;
@@ -260,8 +296,8 @@
             control = el('select', { class: 'form-control', id: id });
             Object.keys(options).forEach(function (k) { control.appendChild(el('option', { value: k, selected: String(k) === String(value) }, [options[k]])); });
         } else if (type === 'checkbox') {
-            control = el('input', { type: 'checkbox', id: id, checked: !!value });
-            var wrap = el('div', { class: 'checkbox' }, [el('label', { for: id }, [control, ' ' + label])]);
+            control = el('input', { type: 'checkbox', id: id, checked: !!value, 'aria-describedby': help ? id + '-help' : null });
+            var wrap = el('div', { class: 'checkbox' }, [el('label', { for: id }, [control, ' ' + label]), help ? el('p', { class: 'help-block', id: id + '-help', text: help }) : null]);
             control.addEventListener('change', function () { onchange(control.checked); });
             return wrap;
         } else {
@@ -269,7 +305,8 @@
             control.value = value;
         }
         control.addEventListener(type === 'select' ? 'change' : 'input', function () { onchange(control.value); });
-        return el('div', { class: 'form-group' }, [el('label', { for: id, text: label }), control, help ? el('p', { class: 'help-block', text: help }) : null]);
+        if (help) { control.setAttribute('aria-describedby', id + '-help'); }
+        return el('div', { class: 'form-group' }, [el('label', { for: id, text: label }), control, help ? el('p', { class: 'help-block', id: id + '-help', text: help }) : null]);
     };
 
     Builder.prototype.optionsEditor = function (field) {
@@ -277,11 +314,11 @@
         var wrap = el('div', { class: 'form-group fs-b-options' }, [el('label', { text: PROP_LABELS.options })]);
         var withImage = field.type === 'cards';
         var table = el('table', { class: 'table table-condensed' });
-        var head = el('tr', {}, [el('th', { text: 'Text' }), el('th', { text: 'Wert' })].concat(withImage ? [el('th', { text: 'Bild' }), el('th', { text: 'Beschreibung' })] : []).concat([el('th')]));
+        var head = el('tr', {}, [el('th', { text: 'Text' }), el('th', { text: 'Wert' })].concat(withImage ? [el('th', { text: 'Bild' }), el('th', { text: 'Beschreibung' })] : []).concat([el('th', {}, [el('span', { class: 'sr-only', text: 'Aktionen' })])]));
         table.appendChild(head);
         (field.options = field.options || []).forEach(function (opt, i) {
-            var labelIn = el('input', { class: 'form-control input-sm', value: opt.label || '' });
-            var valueIn = el('input', { class: 'form-control input-sm', value: opt.value || '' });
+            var labelIn = el('input', { class: 'form-control input-sm', value: opt.label || '', 'aria-label': 'Text ' + (i + 1) });
+            var valueIn = el('input', { class: 'form-control input-sm', value: opt.value || '', 'aria-label': 'Wert ' + (i + 1) });
             labelIn.addEventListener('input', function () {
                 var auto = !opt.value || opt.value === slug(opt._prevLabel || '');
                 opt._prevLabel = labelIn.value; opt.label = labelIn.value;
@@ -290,22 +327,10 @@
             valueIn.addEventListener('input', function () { opt.value = slug(valueIn.value); });
             var cells = [el('td', {}, [labelIn]), el('td', {}, [valueIn])];
             if (withImage) {
-                var sel = el('select', { class: 'form-control input-sm' }, [el('option', { value: '', text: '—' })]);
-                self.config.graphics.forEach(function (g) { sel.appendChild(el('option', { value: 'fs:' + g, selected: opt.image === 'fs:' + g, text: g.replace(/_/g, ' ') })); });
-                if (opt.image && opt.image.indexOf('fs:') !== 0) { sel.appendChild(el('option', { value: opt.image, selected: true, text: opt.image })); }
-                sel.appendChild(el('option', { value: '__media', text: 'Datei aus Medienpool …' }));
-                sel.addEventListener('change', function () {
-                    if (sel.value === '__media') {
-                        var file = prompt('Dateiname im Medienpool (z. B. saal_1.jpg):', opt.image && opt.image.indexOf('fs:') !== 0 ? opt.image : '');
-                        if (file) { opt.image = file.trim(); }
-                        self.render();
-                        return;
-                    }
-                    opt.image = sel.value;
-                });
-                var desc = el('input', { class: 'form-control input-sm', value: opt.description || '' });
+                cells.push(el('td', {}, [self.imagePicker(opt, labelIn)]));
+                var desc = el('input', { class: 'form-control input-sm', value: opt.description || '', 'aria-label': 'Beschreibung ' + (i + 1) });
                 desc.addEventListener('input', function () { opt.description = desc.value; });
-                cells.push(el('td', {}, [sel]), el('td', {}, [desc]));
+                cells.push(el('td', {}, [desc]));
             }
             cells.push(el('td', {}, [el('button', { type: 'button', class: 'btn btn-xs btn-danger', title: 'entfernen', onclick: function () { field.options.splice(i, 1); self.render(); } }, ['×'])]));
             table.appendChild(el('tr', {}, cells));
@@ -365,21 +390,110 @@
         return wrap;
     };
 
+    /**
+     * Bild einer Kachel: mitgelieferte Grafik oder Datei aus dem Medienpool (Popup des Medienpools wie bei REX_MEDIA).
+     */
+    Builder.prototype.imagePicker = function (opt, labelIn) {
+        var self = this;
+        var isMedia = !!opt.image && opt.image.indexOf('fs:') !== 0;
+        var wrap = el('div', { class: 'fs-b-image' });
+        var sel = el('select', { class: 'form-control input-sm', 'aria-label': self.t('b_media_option') }, [el('option', { value: '', text: self.t('b_media_none') })]);
+        self.config.graphics.forEach(function (g) { sel.appendChild(el('option', { value: 'fs:' + g, selected: opt.image === 'fs:' + g, text: g.replace(/_/g, ' ') })); });
+        sel.appendChild(el('option', { value: '__media', selected: isMedia, text: self.t('b_media_file') }));
+        wrap.appendChild(sel);
+
+        var id = 'fsb' + (++mediaCounter);
+        var file = el('input', { class: 'form-control', type: 'text', id: 'REX_MEDIA_' + id, readonly: true, value: isMedia ? opt.image : '', 'aria-label': self.t('b_media_file') });
+        var open = function (e) {
+            if (e) { e.preventDefault(); }
+            var param = '&args[types]=' + encodeURIComponent(self.config.mediaTypes || '');
+            if (typeof window.openREXMedia === 'function') { window.openREXMedia(id, param); }
+        };
+        // Markup wie das REX_MEDIA-Widget des Medienpools, damit Erweiterungen (z. B. eigene Medienpool-Oberflächen) es erkennen
+        var openLink = el('a', { href: '#', role: 'button', class: 'btn btn-popup', title: self.t('b_media_pick'), 'aria-label': self.t('b_media_pick'), onclick: open }, [el('i', { class: 'rex-icon rex-icon-open-mediapool', 'aria-hidden': 'true' })]);
+        var group = el('div', { class: 'input-group input-group-sm rex-js-widget rex-js-widget-media fs-b-image__media', hidden: !isMedia }, [
+            file,
+            el('span', { class: 'input-group-btn' }, [
+                openLink,
+                el('a', { href: '#', role: 'button', class: 'btn btn-popup', title: self.t('b_media_remove'), 'aria-label': self.t('b_media_remove'), onclick: function (e) {
+                    e.preventDefault();
+                    delete opt.image; file.value = ''; sel.value = ''; group.hidden = true;
+                } }, [el('i', { class: 'rex-icon rex-icon-delete-media', 'aria-hidden': 'true' })])
+            ])
+        ]);
+        wrap.appendChild(group);
+        // Der Medienpool meldet die Auswahl per jQuery-Event „change“ am Eingabefeld
+        var picked = function () {
+            if (file.value) { opt.image = file.value; group.hidden = false; sel.value = '__media'; }
+        };
+        if (typeof jQuery !== 'undefined') { jQuery(file).on('change', picked); } else { file.addEventListener('change', picked); }
+        sel.addEventListener('change', function () {
+            if (sel.value === '__media') {
+                group.hidden = false;
+                if (!file.value) { openLink.click(); }
+                return;
+            }
+            group.hidden = true;
+            if (sel.value) { opt.image = sel.value; } else { delete opt.image; }
+            file.value = '';
+        });
+        return wrap;
+    };
+
     Builder.prototype.renderSettings = function () {
         var self = this;
         var box = el('div', { class: 'fs-b-settings' });
-        var emailFields = { '': 'erstes E-Mail-Feld' };
+        var emailFields = { '': self.t('set_sender_field_first') };
         this.allValueFields().forEach(function (f) { if (f.type === 'email') { emailFields[f.name] = f.label || f.name; } });
-        SETTINGS.forEach(function (s) {
-            var key = s[0], type = s[1], label = s[2], def = s[3];
-            var value = self.settings[key] === undefined ? def : self.settings[key];
-            if (type === 'emailfield') {
-                box.appendChild(self.input(label, 'select', value, function (v) { self.settings[key] = v; }, '', emailFields));
-            } else {
-                box.appendChild(self.input(label, type, value, function (v) { self.settings[key] = v; }, key === 'yform_table' ? 'Standard: ' + self.config.yformTable : ''));
+        var value = function (item) { return self.settings[item.key] === undefined ? item.def : self.settings[item.key]; };
+        var depending = {};
+        SECTIONS.forEach(function (sec) { sec.items.forEach(function (item) { if (item.dep) { depending[item.dep] = true; } }); });
+
+        SECTIONS.forEach(function (sec) {
+            var fs = el('fieldset', { class: 'fs-b-section' }, [
+                el('legend', { text: self.t(sec.title) }),
+                el('p', { class: 'help-block fs-b-section__help', text: self.t(sec.help) })
+            ]);
+            if (sec.title === 's_spam' && self.config.settingsUrl) {
+                fs.appendChild(el('p', {}, [el('a', { href: self.config.settingsUrl }, [el('i', { class: 'rex-icon fa-sliders', 'aria-hidden': 'true' }), ' ' + self.t('s_spam_link')])]));
             }
+            sec.items.forEach(function (item) {
+                if (item.dep && !value({ key: item.dep, def: self.itemDefault(item.dep) })) { return; }
+                var label = self.t(item.label);
+                var help = item.help ? self.t(item.help) : '';
+                var onchange = function (v) {
+                    if (item.type === 'number') { v = v === '' ? '' : Math.max(item.min || 0, Math.min(item.max || 9999, parseInt(v, 10) || item.def)); }
+                    self.settings[item.key] = v;
+                    if (depending[item.key]) { self.render(); }
+                };
+                var control;
+                if (item.type === 'emailfield') {
+                    control = self.input(label, 'select', value(item), onchange, help, emailFields);
+                } else if (item.type === 'select') {
+                    var opts = {};
+                    Object.keys(item.options).forEach(function (k) { opts[k] = self.t(item.options[k]); });
+                    control = self.input(label, 'select', value(item), onchange, help, opts);
+                } else if (item.key === 'yform_table') {
+                    control = self.input(label, 'text', value(item), onchange, help + ' ' + self.config.yformTable);
+                } else {
+                    control = self.input(label, item.type, value(item), onchange, help);
+                }
+                if (item.type === 'number') {
+                    var num = control.querySelector('input');
+                    num.setAttribute('min', item.min); num.setAttribute('max', item.max); num.classList.add('fs-b-number');
+                }
+                if (item.dep) { control.classList.add('fs-b-dependent'); }
+                fs.appendChild(control);
+            });
+            box.appendChild(fs);
         });
         return box;
+    };
+
+    Builder.prototype.itemDefault = function (key) {
+        var def;
+        SECTIONS.forEach(function (sec) { sec.items.forEach(function (item) { if (item.key === key) { def = item.def; } }); });
+        return def;
     };
 
     Builder.prototype.serialize = function () {
@@ -388,12 +502,50 @@
         return { definition: JSON.stringify(this.definition), settings: JSON.stringify(this.settings) };
     };
 
+    /** „Neues Formular“: Tabellenauswahl nur bei „YForm-Tabelle übernehmen“ zeigen */
+    function bootCreate() {
+        var form = document.querySelector('[data-fs-create]');
+        if (!form || form.getAttribute('data-ready')) { return; }
+        form.setAttribute('data-ready', '1');
+        var source = form.querySelector('[data-fs-create-source]');
+        var table = form.querySelector('[data-fs-create-table]');
+        var help = form.querySelector('[data-fs-create-help]');
+        if (!source || !table) { return; }
+        var sync = function () {
+            var on = source.value === '__yform';
+            table.hidden = !on;
+            if (help) { help.hidden = !on; }
+        };
+        source.addEventListener('change', sync);
+        sync();
+    }
+
     function boot() {
+        bootCreate();
         var root = document.getElementById('fs-builder');
         if (!root || root.getAttribute('data-ready')) { return; }
         root.setAttribute('data-ready', '1');
         var builder = new Builder(root);
         var form = root.closest('form');
+
+        // Ungespeicherte Änderungen: Stand beim Laden mit dem aktuellen vergleichen
+        var snapshot = function () {
+            var data = builder.serialize();
+            var extra = [];
+            Array.prototype.forEach.call(form.querySelectorAll('input[name=name], textarea[name=description], input[name=status]'), function (f) {
+                extra.push(f.type === 'checkbox' ? f.checked : f.value);
+            });
+            return data.definition + '|' + data.settings + '|' + JSON.stringify(extra);
+        };
+        var initial = snapshot();
+        var submitting = false;
+        window.addEventListener('beforeunload', function (e) {
+            if (submitting || snapshot() === initial) { return; }
+            e.preventDefault();
+            e.returnValue = builder.t('b_unsaved');
+            return e.returnValue;
+        });
+
         form.addEventListener('submit', function (e) {
             var names = {};
             var dupes = [];
@@ -402,6 +554,7 @@
             var data = builder.serialize();
             form.querySelector('[data-fs-out=definition]').value = data.definition;
             form.querySelector('[data-fs-out=settings]').value = data.settings;
+            submitting = true;
         });
     }
     if (typeof jQuery !== 'undefined') { jQuery(document).on('rex:ready', boot); }

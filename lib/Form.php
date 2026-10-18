@@ -10,10 +10,29 @@ use rex_sql;
  *
  * definition = {steps: [{title, intro, show_if?, fields: [...]}]}
  * settings   = {submit_label, success_title, success_text, store_yform, yform_table,
- *               mail_to, mail_subject, copy_to_sender, sender_field, pdf, pdf_title, pdf_intro}
+ *               mail_to, mail_subject, copy_to_sender, sender_field, pdf, pdf_title, pdf_intro,
+ *               transition, progress_nav, step_counter, auto_advance, draft, draft_days, datalayer}
+ *
+ * Fehlende Schlüssel gelten mit ihrem Standardwert (siehe DEFAULTS bzw. setting()).
  */
 final class Form
 {
+    /**
+     * Standardwerte der Ablauf-Optionen. Sie entsprechen dem bisherigen Verhalten –
+     * Formulare ohne diese Schlüssel sehen aus und funktionieren wie vorher.
+     */
+    public const DEFAULTS = [
+        'transition' => 'none',
+        'progress_nav' => false,
+        'step_counter' => false,
+        'auto_advance' => false,
+        'draft' => false,
+        'draft_days' => 7,
+        'datalayer' => false,
+    ];
+
+    public const TRANSITIONS = ['none', 'slide', 'fade'];
+
     /**
      * @param array{steps?: list<array<string, mixed>>} $definition
      * @param array<string, mixed> $settings
@@ -25,6 +44,7 @@ final class Form
         public readonly array $definition,
         public readonly array $settings,
         public readonly bool $active,
+        public readonly string $description = '',
     ) {}
 
     public static function table(): string
@@ -44,12 +64,15 @@ final class Form
         return $row ? self::fromRow($row) : null;
     }
 
-    /** @return array<int, string> ID => Name (für Auswahlfelder) */
-    public static function options(): array
+    /**
+     * @param bool $all auch inaktive Formulare (z. B. damit eine Modulauswahl nicht verloren geht)
+     * @return array<int, string> ID => Name (für Auswahlfelder)
+     */
+    public static function options(bool $all = false): array
     {
         $out = [];
-        foreach (rex_sql::factory()->getArray('SELECT id, name FROM ' . self::table() . ' WHERE status = 1 ORDER BY name') as $row) {
-            $out[(int) $row['id']] = (string) $row['name'];
+        foreach (rex_sql::factory()->getArray('SELECT id, name, status FROM ' . self::table() . ($all ? '' : ' WHERE status = 1') . ' ORDER BY name') as $row) {
+            $out[(int) $row['id']] = (string) $row['name'] . ($all && 1 !== (int) $row['status'] ? ' (' . \rex_i18n::msg('form_studio_inactive') . ')' : '');
         }
         return $out;
     }
@@ -64,6 +87,7 @@ final class Form
             json_decode((string) $row['definition'], true) ?: ['steps' => []],
             json_decode((string) $row['settings'], true) ?: [],
             1 === (int) $row['status'],
+            (string) ($row['description'] ?? ''),
         );
     }
 
@@ -72,8 +96,9 @@ final class Form
      *
      * @param array<string, mixed> $definition
      * @param array<string, mixed> $settings
+     * @param bool|null $active null = Status nicht ändern (neue Formulare sind aktiv)
      */
-    public static function save(string $key, string $name, array $definition, array $settings, string $description = '', ?int $id = null): int
+    public static function save(string $key, string $name, array $definition, array $settings, string $description = '', ?int $id = null, ?bool $active = null): int
     {
         $sql = rex_sql::factory()->setTable(self::table());
         $sql->setValue('key', $key);
@@ -84,11 +109,16 @@ final class Form
         $user = rex::getUser()?->getLogin() ?? 'form_studio';
         $sql->addGlobalUpdateFields($user);
         $existing = $id ?? (self::getByKey($key)?->id);
+        if (null !== $active) {
+            $sql->setValue('status', $active ? 1 : 0);
+        }
         if ($existing) {
             $sql->setWhere(['id' => $existing])->update();
             return $existing;
         }
-        $sql->setValue('status', 1);
+        if (null === $active) {
+            $sql->setValue('status', 1);
+        }
         $sql->addGlobalCreateFields($user);
         $sql->insert();
         return (int) $sql->getLastId();
@@ -142,9 +172,15 @@ final class Form
         return $visible;
     }
 
+    /**
+     * Einstellung lesen. Ohne eigenen Standardwert gilt der aus DEFAULTS.
+     */
     public function setting(string $key, mixed $default = null): mixed
     {
         $value = $this->settings[$key] ?? null;
+        if (null === $default && array_key_exists($key, self::DEFAULTS)) {
+            $default = self::DEFAULTS[$key];
+        }
         return null === $value || '' === $value ? $default : $value;
     }
 }

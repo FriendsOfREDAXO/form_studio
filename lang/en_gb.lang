@@ -1,3 +1,117 @@
 form_studio_title = Form Studio
 form_studio_forms = Forms
 form_studio_settings = Settings
+
+# formslider (BACK)
+form_studio_description = Description (internal)
+form_studio_description_help = For editors only, not shown on the website.
+form_studio_active = Active
+form_studio_active_help = Inactive forms are not shown on the website and accept no submissions. Placements are kept.
+form_studio_inactive = inactive
+form_studio_status = Status
+form_studio_conditional = conditional
+form_studio_step_default = Step {0}
+
+form_studio_create_name = Name of the form
+form_studio_create_source = Based on
+form_studio_create_from_yform = Import YForm table …
+form_studio_create_table = Table
+form_studio_create_from_yform_help = Every field of type "fieldset" starts a new step, required fields are kept. The table itself is not changed.
+form_studio_import_done = Imported from YForm table {0}. Please check fields and steps. Submissions are only stored in the table once you switch it on under Settings → Storage.
+form_studio_import_skipped = These fields could not be imported:
+form_studio_import_failed = Import failed:
+form_studio_import_table_missing = The YForm table {0} does not exist.
+form_studio_import_duplicate = duplicate field name
+form_studio_import_description = Imported from YForm table {0}
+
+form_studio_switch_on = Yes
+form_studio_switch_off = No
+form_studio_switch_required = Please switch on "{0}".
+
+form_studio_module_form = Form
+form_studio_module_please_choose = Please choose …
+form_studio_module_help = Design forms under <a href="{0}">Form Studio → Forms</a>.
+form_studio_module_success_text = Own text after submitting
+form_studio_module_success_text_help = Optional. Replaces the text from the form settings at this placement, e.g. for a campaign.
+form_studio_module_wrapper_class = Additional CSS class
+form_studio_module_wrapper_class_help = Optional, for custom styling at this placement. Separate several classes with spaces.
+form_studio_module_choose = Form Studio: Please choose a form.
+form_studio_module_edit = Edit form
+form_studio_module_counts = {0} steps, {1} fields
+form_studio_module_steps = Steps
+form_studio_module_inactive = This form is inactive and is not shown on the website. Activate it under Form Studio → Forms.
+form_studio_module_preview_title = Preview: {0} (first step)
+
+form_studio_b_unsaved = There are unsaved changes. Leave the page anyway?
+form_studio_b_media_option = Image of the tile
+form_studio_b_media_none = —
+form_studio_b_media_file = File from the media pool …
+form_studio_b_media_pick = Choose file in the media pool
+form_studio_b_media_remove = Remove image
+form_studio_b_on_text = Text for "on" (empty = Yes)
+form_studio_b_off_text = Text for "off" (empty = No)
+form_studio_b_switch_default = Switched on initially
+
+form_studio_s_flow = Flow & display
+form_studio_s_flow_help = How visitors are guided through the form. The step options only apply to forms with several steps.
+form_studio_s_success = After submitting
+form_studio_s_success_help = Visitors see this message once the request has arrived.
+form_studio_s_mail = E-mail
+form_studio_s_mail_help = Who receives an e-mail with the details.
+form_studio_s_pdf = PDF
+form_studio_s_pdf_help = A summary of the details as PDF – for download and as attachment.
+form_studio_s_store = Storage
+form_studio_s_store_help = Requests are always sent by e-mail. They are only stored permanently if you switch it on here.
+form_studio_s_draft = Draft in the browser
+form_studio_s_draft_help = Helps with long forms: visitors who leave the page find their input again on their next visit. Stored only in the visitor's browser, not on the server.
+form_studio_s_analytics = Analytics
+form_studio_s_analytics_help = For analytics, e.g. with Google Tag Manager or Matomo.
+form_studio_s_spam = Spam protection
+form_studio_s_spam_help = Spam protection is always active – without captcha and without third parties. Limits apply to all forms.
+form_studio_s_spam_link = Configure spam protection
+
+form_studio_set_submit_label = Label of the submit button
+form_studio_set_review_title = Name of the last step "Review"
+form_studio_set_transition = Transition between steps
+form_studio_set_transition_help = No animation when "reduce motion" is switched on in the operating system.
+form_studio_set_transition_none = None (switch instantly)
+form_studio_set_transition_slide = Slide
+form_studio_set_transition_fade = Fade
+form_studio_set_progress_nav = Clickable progress bar
+form_studio_set_progress_nav_help = Visitors can jump to steps already filled in. Moving forward is only possible when all previous steps are complete.
+form_studio_set_step_counter = Show "Step 2 of 5"
+form_studio_set_step_counter_help = Hidden steps are not counted.
+form_studio_set_auto_advance = Continue automatically after a choice
+form_studio_set_auto_advance_help = If the choice (single choice or tile) is the last field of the step, the next step follows after a short pause.
+form_studio_set_success_title = Heading
+form_studio_set_success_text = Text
+form_studio_set_success_text_help = The module lets you enter an own text for single pages.
+form_studio_set_mail_to = E-mail to
+form_studio_set_mail_to_help = Separate several addresses with commas. Empty = sender e-mail from the settings.
+form_studio_set_mail_subject = Subject of the e-mail to you
+form_studio_set_copy_to_sender = Send a copy to the person submitting
+form_studio_set_sender_field = E-mail field of the person submitting
+form_studio_set_sender_field_first = first e-mail field
+form_studio_set_copy_subject = Subject of the copy
+form_studio_set_copy_intro = Introduction of the copy
+form_studio_set_pdf = Create PDF (download after submitting)
+form_studio_set_pdf_attach_team = Attach PDF to the e-mail to you
+form_studio_set_pdf_attach_copy = Attach PDF to the copy for the person submitting
+form_studio_set_pdf_title = Title in the PDF
+form_studio_set_pdf_intro = Introduction in the PDF
+form_studio_set_store_yform = Store submissions in a YForm table
+form_studio_set_store_yform_help = The table is created or extended by new fields on saving. Existing fields are never deleted.
+form_studio_set_yform_table = Table name
+form_studio_set_yform_table_help = Empty = automatic:
+form_studio_set_draft = Keep input as draft in the browser
+form_studio_set_draft_help = Consents, hidden fields and passwords are never stored. The draft is deleted after submitting; visitors can also delete it themselves.
+form_studio_set_draft_days = Delete draft after … days
+form_studio_set_datalayer = Report events to the dataLayer
+form_studio_set_datalayer_help = Reports step changes, submit and success to window.dataLayer if present on the page. No input is transmitted.
+
+# formslider (FRONT)
+form_studio_fe_step_counter = Step {0} of {1}
+form_studio_fe_step_live = Step {0} of {1}: {2}
+form_studio_fe_draft_restored = Your entries have been restored.
+form_studio_fe_draft_clear = Clear entries
+form_studio_fe_draft_cleared = Your saved entries have been deleted.

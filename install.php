@@ -40,12 +40,14 @@ rex_sql_table::get(rex::getTable('form_studio_attempt'))
     ->ensureIndex(new rex_sql_index('createdate', ['createdate']))
     ->ensure();
 
-// Modul „Form Studio: Formular“ anlegen bzw. aktualisieren
+// Modul „Form Studio: Formular“ anlegen bzw. aktualisieren (auch bei Re-Install und Update).
+// Bestehende Blöcke bleiben gültig: REX_VALUE[1] ist weiterhin das Formular, die neuen Werte 2 und 3 sind optional.
+// __DIR__ statt $this->getPath(): update.php läuft aus dem Ordner der neuen Version.
 $module = rex_sql::factory()->getArray('SELECT id FROM ' . rex::getTable('module') . ' WHERE `key` = "form_studio"');
 $sql = rex_sql::factory()->setTable(rex::getTable('module'));
 $sql->setValue('name', 'Form Studio: Formular');
-$sql->setValue('input', rex_file::get($this->getPath('module/input.php')));
-$sql->setValue('output', rex_file::get($this->getPath('module/output.php')));
+$sql->setValue('input', rex_file::get(__DIR__ . '/module/input.php'));
+$sql->setValue('output', rex_file::get(__DIR__ . '/module/output.php'));
 $sql->addGlobalUpdateFields('form_studio');
 if ($module) {
     $sql->setWhere(['id' => $module[0]['id']])->update();

@@ -54,6 +54,11 @@
     --fs-button-spacing: normal;
     --fs-button-size: 0.875rem;
     --fs-button-weight: 400;
+    /* Ja/Nein-Schalter (Spur im Zustand „Nein“, Kontrast zu Weiß ≥ 3:1) */
+    --fs-switch-off: #767676;
+    /* Übergang zwischen Schritten */
+    --fs-transition-duration: 0.32s;
+    --fs-transition-distance: 2rem;
 }
 .fs {
     color: var(--fs-text);
@@ -231,6 +236,45 @@
 .fs-success:focus { outline: none; }
 .fs-success p:last-child { margin-bottom: 0; }
 
+/* Nur für Screenreader (Ansage des Schritts) */
+.fs-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Klickbarer Fortschritt (Einstellung „progress_nav“) */
+.fs-progress__btn { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 1.75rem; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fs-progress__btn:hover .fs-progress__label { text-decoration: underline; text-underline-offset: 0.2em; }
+.fs-progress__btn:focus-visible { outline: 3px solid var(--fs-focus); outline-offset: 4px; border-radius: 2px; }
+
+/* Schrittzähler „Schritt 2 von 5“ */
+.fs-stepcount { margin: -0.75rem 0 1rem; color: var(--fs-muted); font-size: var(--fs-small); }
+
+/* Entwurf wiederhergestellt */
+.fs-draft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 1rem; padding: 0.75rem 1.25rem; border-radius: var(--fs-radius); background: var(--fs-info-bg); font-size: var(--fs-small); }
+.fs-draft:focus { outline: none; }
+.fs-draft__text { margin: 0; }
+
+/* Ja/Nein-Schalter: echte Checkbox (role="switch"), Zustandstext per CSS */
+.fs-switch { display: inline-flex; align-items: center; gap: 0.6rem; position: relative; min-height: 2rem; cursor: pointer; }
+.fs-switch__input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; }
+.fs-switch__track { position: relative; flex: 0 0 auto; width: 2.75rem; height: 1.5rem; border-radius: 999px; background: var(--fs-switch-off); transition: background-color 0.15s; }
+.fs-switch__track::after { content: ""; position: absolute; top: 3px; left: 3px; width: calc(1.5rem - 6px); height: calc(1.5rem - 6px); border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.fs-switch__input:checked + .fs-switch__track { background: var(--fs-accent); }
+.fs-switch__input:checked + .fs-switch__track::after { transform: translateX(1.25rem); }
+.fs-switch__input:focus-visible + .fs-switch__track { outline: 3px solid var(--fs-focus); outline-offset: 2px; }
+.fs-switch__input[aria-invalid="true"] + .fs-switch__track { box-shadow: 0 0 0 2px var(--fs-surface), 0 0 0 4px var(--fs-error); }
+.fs-switch__state--on, .fs-switch__input:checked ~ .fs-switch__state--off { display: none; }
+.fs-switch__input:checked ~ .fs-switch__state--on { display: inline; }
+
+/* Übergang zwischen Schritten (Einstellung „transition“) – nur ohne Wunsch nach reduzierter Bewegung */
+@media (prefers-reduced-motion: no-preference) {
+    .fs-form--animating { overflow-x: clip; }
+    .fs-anim-slide { animation: fs-slide-in var(--fs-transition-duration) cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+    .fs-anim-slide.fs-anim--back { animation-name: fs-slide-back; }
+    .fs-anim-fade { animation: fs-fade-in var(--fs-transition-duration) ease-out both; }
+}
+@keyframes fs-slide-in { from { opacity: 0; transform: translateX(var(--fs-transition-distance)); } to { opacity: 1; transform: none; } }
+@keyframes fs-slide-back { from { opacity: 0; transform: translateX(calc(var(--fs-transition-distance) * -1)); } to { opacity: 1; transform: none; } }
+@keyframes fs-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
-    .fs-card__body, .fs-control, .fs-button { transition: none; }
+    .fs-card__body, .fs-control, .fs-button, .fs-switch__track, .fs-switch__track::after { transition: none; }
 }

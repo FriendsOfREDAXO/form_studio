@@ -50,6 +50,8 @@ final class FieldTypes
                 'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'options', 'inline']],
             'cards' => ['label' => 'Bildauswahl (Kacheln)', 'icon' => 'fa-th-large', 'group' => 'choice', 'value' => true, 'options' => true,
                 'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'options', 'multiple', 'columns']],
+            'switch' => ['label' => 'Ja/Nein-Schalter', 'icon' => 'fa-toggle-on', 'group' => 'choice', 'value' => true,
+                'yform' => ['type' => 'checkbox', 'db_type' => 'tinyint(1)'], 'props' => [...$common, 'default', 'on_text', 'off_text']],
             'counter' => ['label' => 'Anzahl (− / +)', 'icon' => 'fa-users', 'group' => 'input', 'value' => true,
                 'yform' => ['type' => 'integer', 'db_type' => 'int'], 'props' => [...$common, 'default', 'min', 'max', 'step', 'unit']],
             'consent' => ['label' => 'Einwilligung', 'icon' => 'fa-check', 'group' => 'choice', 'value' => true,

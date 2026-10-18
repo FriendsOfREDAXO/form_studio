@@ -21,23 +21,30 @@ final class Processor
 {
     /**
      * Ausgabe für die Modulausgabe: Formular, Fehler oder Erfolgsmeldung.
+     *
+     * @param array{success_text?: string, wrapper_class?: string} $options Angaben der jeweiligen Einbindung (Modul)
      */
-    public static function handle(Form $form): string
+    public static function handle(Form $form, array $options = []): string
     {
+        // Inaktive Formulare erscheinen im Frontend nicht und nehmen nichts an
+        if (!$form->active) {
+            return '';
+        }
+
         $done = rex_request::get('fs_done', 'string', '');
         if ('' !== $done && ($submission = Submission::getByToken($done)) && $submission->formId === $form->id) {
-            return Renderer::success($form, $done);
+            return Renderer::success($form, $done, $options);
         }
 
         if ('post' !== rex_request::requestMethod() || $form->id !== rex_request::post('form_studio_id', 'int', 0)) {
-            return Renderer::render($form);
+            return Renderer::render($form, [], [], '', $options);
         }
 
         $raw = rex_request::post('fs', 'array', []);
         $values = self::sanitize($form, $raw);
 
         if (!rex_csrf_token::factory('form_studio_' . $form->id)->isValid()) {
-            return Renderer::render($form, $values, [], 'Die Sitzung ist abgelaufen. Bitte senden Sie das Formular erneut ab.');
+            return Renderer::render($form, $values, [], 'Die Sitzung ist abgelaufen. Bitte senden Sie das Formular erneut ab.', $options);
         }
         $spam = SpamGuard::check(
             $form,
@@ -48,20 +55,20 @@ final class Processor
         );
         switch ($spam['status']) {
             case SpamGuard::EXPIRED:
-                return Renderer::render($form, $values, [], 'Das Formular war sehr lange geöffnet. Bitte prüfen Sie Ihre Angaben und senden Sie es erneut ab.');
+                return Renderer::render($form, $values, [], 'Das Formular war sehr lange geöffnet. Bitte prüfen Sie Ihre Angaben und senden Sie es erneut ab.', $options);
             case SpamGuard::RATE_LIMIT:
-                return Renderer::render($form, $values, [], 'Sie haben in kurzer Zeit bereits mehrere Anfragen gesendet. Bitte versuchen Sie es später erneut oder rufen Sie uns an.');
+                return Renderer::render($form, $values, [], 'Sie haben in kurzer Zeit bereits mehrere Anfragen gesendet. Bitte versuchen Sie es später erneut oder rufen Sie uns an.', $options);
             case SpamGuard::SPAM:
             case SpamGuard::DUPLICATE:
                 // Spam und doppelte Klicks: wie ein Erfolg aussehen lassen, aber nichts erneut versenden
-                return Renderer::success($form, '');
+                return Renderer::success($form, '', $options);
         }
 
         // Erst nach der Spamprüfung validieren – Bots bekommen keine Rückmeldung zu Feldern
         $visible = $form->visibility($values);
         $errors = self::validate($form, $values, $visible);
         if ($errors) {
-            return Renderer::render($form, $values, $errors);
+            return Renderer::render($form, $values, $errors, '', $options);
         }
 
         // Nur sichtbare Felder übernehmen
@@ -132,7 +139,7 @@ final class Processor
                 }
                 continue;
             }
-            if ('consent' === $type) {
+            if ('consent' === $type || 'switch' === $type) {
                 $values[$name] = '1' === (string) $value ? '1' : '';
                 continue;
             }
@@ -160,7 +167,11 @@ final class Processor
             $type = (string) ($field['type'] ?? 'text');
 
             if (!empty($field['required']) && $empty) {
-                $errors[$name] = 'consent' === $type ? 'Bitte bestätigen Sie: ' . $label : 'Bitte füllen Sie „' . $label . '“ aus.';
+                $errors[$name] = match ($type) {
+                    'consent' => 'Bitte bestätigen Sie: ' . $label,
+                    'switch' => \rex_i18n::msg('form_studio_switch_required', $label),
+                    default => 'Bitte füllen Sie „' . $label . '“ aus.',
+                };
                 continue;
             }
             if ($empty) {
@@ -200,6 +211,13 @@ final class Processor
         }
         if ('consent' === $type) {
             return '1' === (string) $value ? 'ja' : 'nein';
+        }
+        if ('switch' === $type) {
+            $on = trim((string) ($field['on_text'] ?? ''));
+            $off = trim((string) ($field['off_text'] ?? ''));
+            return '1' === (string) $value
+                ? ('' !== $on ? $on : \rex_i18n::msg('form_studio_switch_on'))
+                : ('' !== $off ? $off : \rex_i18n::msg('form_studio_switch_off'));
         }
         if ('date' === $type && ($d = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $value))) {
             return $d->format('d.m.Y');

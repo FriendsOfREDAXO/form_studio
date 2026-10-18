@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 (unveröffentlicht)
+
+Übernimmt die Funktionen von formslider – im eigenen Stil. Alle neuen Funktionen sind je Formular einschaltbar und standardmäßig aus; bestehende Formulare bleiben unverändert.
+
+- **Übergang zwischen Schritten** (gleiten/überblenden, ohne Animation bei „Bewegung reduzieren“), **anklickbarer Fortschritt**, **Schrittanzeige** „Schritt 2 von 5“ mit Ansage für Screenreader, **automatisch weiter** nach einer Einfachauswahl.
+- **Zwischenstand im Browser** mit „Eingaben löschen“; nach dem Absenden und nach Ablauf gelöscht.
+- **Neuer Feldtyp Ja/Nein-Schalter** (auch in Bedingungen, Prüfseite, E-Mail, PDF, YForm).
+- **JavaScript-Ereignisse** `fs:step`, `fs:submit`, `fs:success`, `fs:draft-restored`; optional an `dataLayer`.
+- **Formular aus YForm-Tabelle übernehmen** (fieldset = Schritt), nicht übernehmbare Felder werden angezeigt.
+- **Modul**: eigener Dankestext und CSS-Klassen je Platzierung, Vorschau im Backend; Modulcode wird bei Update aktualisiert.
+- **Einstellungen** im Builder nach Themen gegliedert, mit kurzen Erklärungen.
+- Fix: Beschreibung ging beim Speichern verloren; Schalter „Aktiv“ (inaktive Formulare erscheinen nicht); Bilder für Kacheln über den Medienpool; Warnung bei ungespeicherten Änderungen.
+- Fix: Einwilligung und Schalter werden in YForm als 0/1 gespeichert (Fehler bei strikter Datenbank).
+- Fix: Feldfehler verschwinden schon beim Tippen – der Klick auf „Weiter“ ging sonst ins Leere; Einwilligungstext mit Link bricht nicht mehr schmal um.
+
 
 ## 0.1.0
 

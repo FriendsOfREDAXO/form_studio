@@ -13,6 +13,14 @@ use rex_yform_manager_table_api;
  */
 final class YFormSync
 {
+    /** YForm-Typ für Feldtypen, falls die Registry keinen liefert */
+    private const FALLBACK = [
+        'switch' => ['type' => 'checkbox', 'db_type' => 'tinyint(1)'],
+    ];
+
+    /** Ja/Nein-Felder werden als 0/1 gespeichert (Spalte tinyint) */
+    private const BOOLEAN_TYPES = ['consent', 'switch'];
+
     public static function tableName(Form $form): string
     {
         $name = (string) $form->setting('yform_table', '');
@@ -23,15 +31,19 @@ final class YFormSync
     public static function sync(Form $form): array
     {
         $table = self::tableName($form);
-        rex_yform_manager_table_api::setTable([
-            'table_name' => $table,
-            'name' => 'Formular: ' . $form->name,
-            'description' => 'Einsendungen aus Form Studio (' . $form->key . ')',
-            'status' => 1,
-            'list_amount' => 50,
-            'list_sortfield' => 'id',
-            'list_sortorder' => 'DESC',
-        ]);
+        $current = rex_yform_manager_table::get($table);
+        // Fremde Tabellen (z. B. per Import übernommen) behalten Name und Beschreibung
+        if (!$current || str_starts_with((string) $current->getDescription(), 'Einsendungen aus Form Studio')) {
+            rex_yform_manager_table_api::setTable([
+                'table_name' => $table,
+                'name' => 'Formular: ' . $form->name,
+                'description' => 'Einsendungen aus Form Studio (' . $form->key . ')',
+                'status' => 1,
+                'list_amount' => 50,
+                'list_sortfield' => 'id',
+                'list_sortorder' => 'DESC',
+            ]);
+        }
         $existing = [];
         foreach (rex_yform_manager_table::get($table)?->getFields() ?? [] as $field) {
             $existing[$field->getName()] = true;
@@ -40,7 +52,7 @@ final class YFormSync
         $prio = count($existing);
         foreach ($form->valueFields() as $field) {
             $name = (string) $field['name'];
-            $type = FieldTypes::get((string) $field['type'])['yform'] ?? null;
+            $type = FieldTypes::get((string) $field['type'])['yform'] ?? self::FALLBACK[(string) $field['type']] ?? null;
             if (!$type || isset($existing[$name])) {
                 continue;
             }
@@ -75,11 +87,20 @@ final class YFormSync
             self::sync($form);
         }
         $columns = array_flip(array_column(rex_sql::factory()->getArray('SHOW COLUMNS FROM ' . rex_sql::factory()->escapeIdentifier($table)), 'Field'));
+        $types = [];
+        foreach ($form->valueFields() as $field) {
+            $types[(string) $field['name']] = (string) ($field['type'] ?? '');
+        }
         $sql = rex_sql::factory()->setTable($table);
         foreach ($data as $item) {
-            if (isset($columns[$item['name']])) {
-                $sql->setValue($item['name'], is_array($item['value']) ? implode(',', $item['value']) : (string) $item['value']);
+            if (!isset($columns[$item['name']])) {
+                continue;
             }
+            if (in_array($types[$item['name']] ?? '', self::BOOLEAN_TYPES, true)) {
+                $sql->setValue($item['name'], '1' === (string) $item['value'] ? 1 : 0);
+                continue;
+            }
+            $sql->setValue($item['name'], is_array($item['value']) ? implode(',', $item['value']) : (string) $item['value']);
         }
         if (isset($columns['fs_created'])) {
             $sql->setValue('fs_created', date('Y-m-d H:i:s'));

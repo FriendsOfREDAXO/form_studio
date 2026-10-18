@@ -1,3 +1,117 @@
 form_studio_title = Form Studio
 form_studio_forms = Formulare
 form_studio_settings = Einstellungen
+
+# formslider (BACK)
+form_studio_description = Beschreibung (intern)
+form_studio_description_help = Nur für die Redaktion, erscheint nicht auf der Website.
+form_studio_active = Aktiv
+form_studio_active_help = Inaktive Formulare erscheinen nicht auf der Website und nehmen keine Anfragen an. Die Einbindungen bleiben erhalten.
+form_studio_inactive = inaktiv
+form_studio_status = Status
+form_studio_conditional = bedingt
+form_studio_step_default = Schritt {0}
+
+form_studio_create_name = Name des Formulars
+form_studio_create_source = Grundlage
+form_studio_create_from_yform = YForm-Tabelle übernehmen …
+form_studio_create_table = Tabelle
+form_studio_create_from_yform_help = Jedes Feld vom Typ „fieldset“ beginnt einen neuen Schritt, Pflichtfelder werden übernommen. Die Tabelle selbst bleibt unverändert.
+form_studio_import_done = Aus der YForm-Tabelle {0} übernommen. Bitte prüfen Sie Felder und Schritte. In die Tabelle gespeichert wird erst, wenn Sie es unter Einstellungen → Speichern einschalten.
+form_studio_import_skipped = Diese Felder ließen sich nicht übernehmen:
+form_studio_import_failed = Übernahme fehlgeschlagen:
+form_studio_import_table_missing = Die YForm-Tabelle {0} gibt es nicht.
+form_studio_import_duplicate = Feldname doppelt
+form_studio_import_description = Übernommen aus der YForm-Tabelle {0}
+
+form_studio_switch_on = Ja
+form_studio_switch_off = Nein
+form_studio_switch_required = Bitte schalten Sie „{0}“ ein.
+
+form_studio_module_form = Formular
+form_studio_module_please_choose = Bitte wählen …
+form_studio_module_help = Formulare gestalten unter <a href="{0}">Form Studio → Formulare</a>.
+form_studio_module_success_text = Eigener Text nach dem Absenden
+form_studio_module_success_text_help = Optional. Ersetzt an dieser Stelle den Text aus den Einstellungen des Formulars, z. B. für eine Aktion.
+form_studio_module_wrapper_class = Zusätzliche CSS-Klasse
+form_studio_module_wrapper_class_help = Optional, für eigene Gestaltung an dieser Stelle. Mehrere Klassen mit Leerzeichen trennen.
+form_studio_module_choose = Form Studio: Bitte ein Formular wählen.
+form_studio_module_edit = Formular bearbeiten
+form_studio_module_counts = {0} Schritte, {1} Felder
+form_studio_module_steps = Schritte
+form_studio_module_inactive = Dieses Formular ist inaktiv und erscheint nicht auf der Website. Aktivieren Sie es unter Form Studio → Formulare.
+form_studio_module_preview_title = Vorschau: {0} (erster Schritt)
+
+form_studio_b_unsaved = Es gibt ungespeicherte Änderungen. Seite trotzdem verlassen?
+form_studio_b_media_option = Bild der Kachel
+form_studio_b_media_none = —
+form_studio_b_media_file = Datei aus dem Medienpool …
+form_studio_b_media_pick = Datei im Medienpool auswählen
+form_studio_b_media_remove = Bild entfernen
+form_studio_b_on_text = Text für „an“ (leer = Ja)
+form_studio_b_off_text = Text für „aus“ (leer = Nein)
+form_studio_b_switch_default = Anfangs eingeschaltet
+
+form_studio_s_flow = Ablauf & Darstellung
+form_studio_s_flow_help = Wie Besucher durch das Formular geführt werden. Die Schritt-Optionen wirken nur bei Formularen mit mehreren Schritten.
+form_studio_s_success = Nach dem Absenden
+form_studio_s_success_help = Diese Meldung sehen Besucher, wenn die Anfrage angekommen ist.
+form_studio_s_mail = E-Mail
+form_studio_s_mail_help = Wer eine E-Mail mit den Angaben erhält.
+form_studio_s_pdf = PDF
+form_studio_s_pdf_help = Eine Übersicht der Angaben als PDF – zum Herunterladen und als Anhang.
+form_studio_s_store = Speichern
+form_studio_s_store_help = Anfragen werden immer per E-Mail versendet. Dauerhaft gespeichert wird nur, wenn Sie es hier einschalten.
+form_studio_s_draft = Zwischenstand im Browser
+form_studio_s_draft_help = Hilft bei langen Formularen: Wer die Seite verlässt, findet die Eingaben beim nächsten Besuch wieder. Gespeichert wird nur im Browser der Besucher, nicht auf dem Server.
+form_studio_s_analytics = Statistik
+form_studio_s_analytics_help = Für Auswertungen, z. B. mit dem Google Tag Manager oder Matomo.
+form_studio_s_spam = Spamschutz
+form_studio_s_spam_help = Der Spamschutz ist immer aktiv – ohne Captcha und ohne Drittanbieter. Grenzwerte gelten für alle Formulare.
+form_studio_s_spam_link = Spamschutz einstellen
+
+form_studio_set_submit_label = Beschriftung des Absende-Buttons
+form_studio_set_review_title = Name des letzten Schritts „Überprüfen“
+form_studio_set_transition = Übergang zwischen den Schritten
+form_studio_set_transition_help = Bei eingeschalteter Einstellung „Bewegung reduzieren“ im Betriebssystem gibt es keine Animation.
+form_studio_set_transition_none = Ohne (sofort wechseln)
+form_studio_set_transition_slide = Schieben
+form_studio_set_transition_fade = Überblenden
+form_studio_set_progress_nav = Fortschrittsanzeige anklickbar
+form_studio_set_progress_nav_help = Besucher können zu bereits ausgefüllten Schritten springen. Nach vorne geht es nur, wenn alle Schritte davor vollständig sind.
+form_studio_set_step_counter = „Schritt 2 von 5“ anzeigen
+form_studio_set_step_counter_help = Ausgeblendete Schritte werden nicht mitgezählt.
+form_studio_set_auto_advance = Nach einer Auswahl automatisch weiter
+form_studio_set_auto_advance_help = Wenn die Auswahl (Einfachauswahl oder Kachel) das letzte Feld des Schritts ist, geht es nach kurzer Pause von selbst zum nächsten Schritt.
+form_studio_set_success_title = Überschrift
+form_studio_set_success_text = Text
+form_studio_set_success_text_help = Im Modul lässt sich für einzelne Seiten ein eigener Text eintragen.
+form_studio_set_mail_to = E-Mail an
+form_studio_set_mail_to_help = Mehrere Adressen mit Komma trennen. Leer = E-Mail des Absenders aus den Einstellungen.
+form_studio_set_mail_subject = Betreff der E-Mail an Sie
+form_studio_set_copy_to_sender = Kopie an die anfragende Person senden
+form_studio_set_sender_field = E-Mail-Feld der anfragenden Person
+form_studio_set_sender_field_first = erstes E-Mail-Feld
+form_studio_set_copy_subject = Betreff der Kopie
+form_studio_set_copy_intro = Einleitung der Kopie
+form_studio_set_pdf = PDF erzeugen (Download nach dem Absenden)
+form_studio_set_pdf_attach_team = PDF an die E-Mail an Sie anhängen
+form_studio_set_pdf_attach_copy = PDF an die Kopie für die anfragende Person anhängen
+form_studio_set_pdf_title = Titel im PDF
+form_studio_set_pdf_intro = Einleitung im PDF
+form_studio_set_store_yform = Einsendungen in einer YForm-Tabelle speichern
+form_studio_set_store_yform_help = Die Tabelle wird beim Speichern angelegt bzw. um neue Felder ergänzt. Bestehende Felder werden nie gelöscht.
+form_studio_set_yform_table = Tabellenname
+form_studio_set_yform_table_help = Leer = automatisch:
+form_studio_set_draft = Eingaben im Browser zwischenspeichern
+form_studio_set_draft_help = Einwilligungen, versteckte Felder und Passwörter werden nie gespeichert. Nach dem Absenden wird der Zwischenstand gelöscht; Besucher können ihn auch selbst löschen.
+form_studio_set_draft_days = Zwischenstand löschen nach … Tagen
+form_studio_set_datalayer = Ereignisse an den dataLayer melden
+form_studio_set_datalayer_help = Meldet Schrittwechsel, Absenden und Erfolg an window.dataLayer, falls auf der Seite vorhanden. Es werden keine Eingaben übertragen.
+
+# formslider (FRONT)
+form_studio_fe_step_counter = Schritt {0} von {1}
+form_studio_fe_step_live = Schritt {0} von {1}: {2}
+form_studio_fe_draft_restored = Ihre Eingaben wurden wiederhergestellt.
+form_studio_fe_draft_clear = Eingaben löschen
+form_studio_fe_draft_cleared = Ihre gespeicherten Eingaben wurden gelöscht.
