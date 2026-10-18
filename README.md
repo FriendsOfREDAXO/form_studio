@@ -2,7 +2,7 @@
 
 Visueller Formular-Builder für REDAXO: Formulare in **Schritten** mit **Bedingungen**, Speicherung in einer automatisch angelegten **YForm-Tabelle**, **E-Mail** an das Haus und eine Kopie an die anfragende Person, **PDF** zum Herunterladen (pdfout) – barrierefrei und ohne Abhängigkeiten im Frontend.
 
-> Status: 0.1.0 – frühe Version, entstanden für einen Hotel-Bankettplaner.
+> Status: 0.2.0 – entstanden für einen Hotel-Bankettplaner, seit 0.2.0 mit den Funktionen von formslider.
 
 ## Funktionen
 

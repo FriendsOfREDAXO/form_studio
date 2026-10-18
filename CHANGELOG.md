@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (unveröffentlicht)
+## 0.2.0 (2026-10-18)
 
 Übernimmt die Funktionen von formslider – im eigenen Stil. Alle neuen Funktionen sind je Formular einschaltbar und standardmäßig aus; bestehende Formulare bleiben unverändert.
 
