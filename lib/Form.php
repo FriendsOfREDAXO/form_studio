@@ -3,7 +3,10 @@
 namespace FriendsOfRedaxo\FormStudio;
 
 use rex;
+use rex_extension;
+use rex_extension_point;
 use rex_sql;
+use rex_string;
 
 /**
  * Ein Formular: Definition (Schritte → Felder) und Einstellungen.
@@ -38,7 +41,7 @@ final class Form
     public const TRANSITIONS = ['none', 'slide', 'fade'];
 
     /**
-     * @param array{steps?: list<array<string, mixed>>} $definition
+     * @param array{steps?: array<int, array<string, mixed>>} $definition
      * @param array<string, mixed> $settings
      */
     private function __construct(
@@ -50,6 +53,17 @@ final class Form
         public readonly bool $active,
         public readonly string $description = '',
     ) {}
+
+    /**
+     * Ungespeicherter Stand für die Live-Vorschau im Builder (id 0, nicht in der Datenbank).
+     *
+     * @param array{steps?: array<int, array<string, mixed>>} $definition
+     * @param array<string, mixed> $settings
+     */
+    public static function preview(array $definition, array $settings, string $name = 'Vorschau'): self
+    {
+        return new self(0, 'preview', $name, $definition, $settings, true);
+    }
 
     public static function table(): string
     {
@@ -174,6 +188,34 @@ final class Form
             }
         }
         return $visible;
+    }
+
+    /**
+     * Einstellungen, die ein Formular an eigene Ressourcen binden und beim Duplizieren nicht übernommen werden:
+     * yform_table – sonst schrieben Original und Kopie in dieselbe YForm-Tabelle (leer = Name aus dem neuen Schlüssel).
+     */
+    public const UNIQUE_SETTINGS = ['yform_table'];
+
+    /**
+     * Legt eine Kopie an: Name „<Name> (Kopie)“, neuer eindeutiger Schlüssel, Definition und Einstellungen übernommen,
+     * inaktiv. Einstellungen aus UNIQUE_SETTINGS werden nicht übernommen.
+     *
+     * @return int|null ID der Kopie, null wenn das Original fehlt
+     */
+    public static function duplicate(int $id): ?int
+    {
+        $original = self::get($id);
+        if (!$original) {
+            return null;
+        }
+        $base = rex_string::normalize($original->key . '_kopie');
+        $key = $base;
+        for ($i = 2; self::getByKey($key); ++$i) {
+            $key = $base . '_' . $i;
+        }
+        $settings = array_diff_key($original->settings, array_flip(self::UNIQUE_SETTINGS));
+        $settings = rex_extension::registerPoint(new rex_extension_point('FORM_STUDIO_DUPLICATE_SETTINGS', $settings, ['original' => $original, 'key' => $key]));
+        return self::save($key, $original->name . ' (Kopie)', $original->definition, (array) $settings, $original->description, null, false);
     }
 
     /**

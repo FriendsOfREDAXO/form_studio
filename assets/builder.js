@@ -8,7 +8,10 @@
         placeholder: 'Platzhalter', default: 'Vorgabewert', maxlength: 'Max. Zeichen', autocomplete: 'Autovervollständigung',
         min: 'Minimum', max: 'Maximum', step: 'Schrittweite', unit: 'Einheit', rows: 'Zeilen', min_days_ahead: 'Frühestens in … Tagen',
         options: 'Auswahlmöglichkeiten', multiple: 'Mehrfachauswahl erlauben', columns: 'Kacheln pro Reihe', inline: 'Nebeneinander anzeigen',
-        text: 'Text', level: 'Größe', style: 'Darstellung', show_if: 'Anzeigen, wenn …'
+        text: 'Text', level: 'Größe', style: 'Darstellung', show_if: 'Anzeigen, wenn …',
+        source: 'Herkunft der Auswahlmöglichkeiten', subfields: 'Felder je Eintrag', min_rows: 'Mindestens … Einträge', max_rows: 'Höchstens … Einträge',
+        add_label: 'Beschriftung „hinzufügen“', row_label: 'Bezeichnung eines Eintrags (z. B. Person)', bank_lookup: 'Bank und BIC anzeigen (Abfrage ohne Kontonummer)',
+        address_suggest: 'Adressvorschläge beim Tippen (OpenStreetMap)', with_country: 'Land abfragen', countries: 'Länder (ISO-Codes, kommagetrennt, z. B. DE,NL,BE – leer = alle)'
     };
     var PROP_I18N = { on_text: 'b_on_text', off_text: 'b_off_text' };
     // Einstellungen des Formulars, gruppiert für Redakteure. Texte kommen aus den Sprachdateien (config.i18n).
@@ -57,8 +60,19 @@
         { title: 's_analytics', help: 's_analytics_help', items: [
             { key: 'datalayer', type: 'checkbox', label: 'set_datalayer', def: false, help: 'set_datalayer_help' }
         ] },
+        { title: 's_design', help: 's_design_help', items: [
+            { key: 'class_form', type: 'text', label: 'set_class_form', def: '' },
+            { key: 'class_control', type: 'text', label: 'set_class_control', def: '', help: 'set_class_control_help' },
+            { key: 'class_select', type: 'text', label: 'set_class_select', def: '', help: 'set_class_select_help' },
+            { key: 'class_textarea', type: 'text', label: 'set_class_textarea', def: '', help: 'set_class_textarea_help' },
+            { key: 'class_checkbox', type: 'text', label: 'set_class_checkbox', def: '' },
+            { key: 'class_radio', type: 'text', label: 'set_class_radio', def: '' },
+            { key: 'class_button_primary', type: 'text', label: 'set_class_button_primary', def: '', help: 'set_class_button_primary_help' },
+            { key: 'class_button_secondary', type: 'text', label: 'set_class_button_secondary', def: '', help: 'set_class_button_secondary_help' }
+        ] },
         { title: 's_spam', help: 's_spam_help', items: [] }
     ];
+    var DEFAULT_ON = { bank_lookup: true, address_suggest: true };
     var mediaCounter = 0;
 
     function el(tag, attrs, children) {
@@ -83,8 +97,102 @@
         this.step = 0;
         this.selected = null; // Index des Felds im aktuellen Schritt, oder 'step'
         this.tab = 'build';
+        this.initPreview();
         this.render();
     }
+
+    // ---- Live-Vorschau: rendert den ungespeicherten Stand über die API form_studio_preview in ein iframe ----
+    var DEVICES = { desktop: ['Desktop', '100%'], tablet: ['Tablet', '768px'], phone: ['Smartphone', '390px'] };
+    function store(key, value) { try { if (value === undefined) { return localStorage.getItem(key); } localStorage.setItem(key, value); } catch (e) { return null; } return null; }
+
+    Builder.prototype.initPreview = function () {
+        var self = this;
+        this.previewOn = store('fs_preview') !== '0';
+        this.previewDevice = DEVICES[store('fs_preview_device')] ? store('fs_preview_device') : 'desktop';
+        this.previewTimer = null;
+        this.previewRequest = 0;
+        // außerhalb von #fs-builder, damit das ständige Neuzeichnen des Builders das iframe nicht neu lädt
+        var box = el('section', { class: 'fs-b-preview', 'aria-label': 'Live-Vorschau' });
+        var head = el('div', { class: 'fs-b-preview__head' });
+        var toggle = el('button', { type: 'button', class: 'btn btn-default btn-xs fs-b-preview__toggle', 'aria-expanded': this.previewOn ? 'true' : 'false' }, [
+            el('i', { class: 'rex-icon fa-eye', 'aria-hidden': 'true' }), ' Live-Vorschau'
+        ]);
+        toggle.addEventListener('click', function () {
+            self.previewOn = !self.previewOn;
+            store('fs_preview', self.previewOn ? '1' : '0');
+            toggle.setAttribute('aria-expanded', self.previewOn ? 'true' : 'false');
+            box.classList.toggle('is-closed', !self.previewOn);
+            if (self.previewOn) { self.schedulePreview(0); }
+        });
+        var devices = el('div', { class: 'btn-group btn-group-xs fs-b-preview__devices', role: 'group', 'aria-label': 'Breite der Vorschau' });
+        Object.keys(DEVICES).forEach(function (key) {
+            var b = el('button', { type: 'button', class: 'btn btn-default' + (key === self.previewDevice ? ' active' : ''), 'aria-pressed': key === self.previewDevice ? 'true' : 'false' }, [DEVICES[key][0]]);
+            b.addEventListener('click', function () {
+                self.previewDevice = key;
+                store('fs_preview_device', key);
+                [].forEach.call(devices.children, function (x) { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+                frame.style.maxWidth = DEVICES[key][1];
+            });
+            devices.appendChild(b);
+        });
+        this.previewStatus = el('span', { class: 'fs-b-preview__status', 'aria-live': 'polite' });
+        head.appendChild(toggle);
+        head.appendChild(devices);
+        head.appendChild(this.previewStatus);
+        var frame = el('iframe', { class: 'fs-b-preview__frame', title: 'Live-Vorschau des Formulars', loading: 'lazy' });
+        frame.style.maxWidth = DEVICES[this.previewDevice][1];
+        var stage = el('div', { class: 'fs-b-preview__stage' }, [frame]);
+        box.appendChild(head);
+        box.appendChild(stage);
+        box.classList.toggle('is-closed', !this.previewOn);
+        this.root.parentNode.insertBefore(box, this.root.nextSibling);
+        this.previewFrame = frame;
+        window.addEventListener('message', function (e) {
+            // Höhe begrenzen (ca. drei Viertel des Fensters), lange Formulare scrollen in der Vorschau
+            if (e.source === frame.contentWindow && e.data && e.data.fsPreviewHeight) { frame.style.height = Math.min(Math.round(window.innerHeight * 0.75), e.data.fsPreviewHeight + 4) + 'px'; }
+            // nach dem Laden zum gewählten Feld springen
+            if (e.source === frame.contentWindow && e.data && e.data.fsPreviewReady) { self.focusPreviewField(); }
+        });
+        // Eingaben in den Eigenschaften ändern das Modell ohne Neuzeichnen – auch dann aktualisieren
+        ['input', 'change'].forEach(function (type) { self.root.addEventListener(type, function () { self.schedulePreview(); }); });
+    };
+
+    // gewähltes Feld in der Vorschau zeigen und kurz hervorheben
+    Builder.prototype.focusPreviewField = function () {
+        if (!this.previewFrame || !this.previewFrame.contentWindow || typeof this.selected !== 'number') { return; }
+        var field = this.fields()[this.selected];
+        if (field && field.name) { this.previewFrame.contentWindow.postMessage({ fsFocus: field.name }, '*'); }
+    };
+
+    Builder.prototype.schedulePreview = function (delay) {
+        var self = this;
+        if (!this.previewOn || !this.previewFrame) { return; }
+        clearTimeout(this.previewTimer);
+        this.previewTimer = setTimeout(function () { self.updatePreview(); }, delay === undefined ? 450 : delay);
+    };
+
+    Builder.prototype.updatePreview = function () {
+        var self = this;
+        var form = this.root.closest('form');
+        var token = form ? form.querySelector('input[name="_csrf_token"]') : null;
+        var nameInput = form ? form.querySelector('input[name="name"]') : null;
+        var body = new FormData();
+        body.append('_csrf_token', token ? token.value : '');
+        body.append('definition', JSON.stringify(this.definition, function (k, v) { return k === '_prevLabel' ? undefined : v; }));
+        body.append('settings', JSON.stringify(this.settings));
+        body.append('step', String(this.step || 0));
+        body.append('name', nameInput ? nameInput.value : '');
+        var request = ++this.previewRequest;
+        this.previewStatus.textContent = 'aktualisiere …';
+        fetch('index.php?rex-api-call=form_studio_preview', { method: 'POST', body: body, credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.text(); })
+            .then(function (html) {
+                if (request !== self.previewRequest) { return; } // inzwischen neuere Anfrage
+                self.previewFrame.srcdoc = html;
+                self.previewStatus.textContent = 'aktuell';
+            })
+            .catch(function () { if (request === self.previewRequest) { self.previewStatus.textContent = 'Vorschau nicht verfügbar'; } });
+    };
 
     Builder.prototype.fields = function () { return this.definition.steps[this.step].fields; };
 
@@ -122,6 +230,8 @@
             el('li', { class: this.tab === 'settings' ? 'active' : '' }, [el('a', { href: '#', onclick: function (e) { e.preventDefault(); self.tab = 'settings'; self.render(); } }, ['Einstellungen'])])
         ]);
         this.root.appendChild(tabs);
+        this.schedulePreview();
+        this.focusPreviewField();
         if (this.tab === 'settings') { this.root.appendChild(this.renderSettings()); return; }
         var row = el('div', { class: 'row fs-b' }, [
             el('div', { class: 'col-md-3' }, [this.renderPalette()]),
@@ -156,6 +266,12 @@
         if (type === 'heading' || type === 'info') { field.text = def.label; }
         if (type === 'consent') { field.label = 'Einwilligung'; field.text = 'Ich bin mit der Verarbeitung meiner Angaben einverstanden. Details in der [Datenschutzerklärung](/datenschutz/).'; field.required = true; }
         if (type === 'counter') { field.default = 1; field.min = 0; }
+        if (type === 'repeater') {
+            field.label = 'Teilnehmende'; field.name = this.uniqueName('teilnehmende'); field.row_label = 'Person'; field.min_rows = 1; field.max_rows = 10;
+            field.subfields = [{ type: 'text', label: 'Name', name: 'name', required: true, width: '1-2' }, { type: 'email', label: 'E-Mail', name: 'email', width: '1-2' }];
+        }
+        if (type === 'iban') { field.bank_lookup = true; }
+        if (type === 'address') { field.address_suggest = true; }
         var fields = this.fields();
         var at = typeof this.selected === 'number' ? this.selected + 1 : fields.length;
         fields.splice(at, 0, field);
@@ -261,8 +377,13 @@
                 body.appendChild(inp);
             } else if (p === 'default' && field.type === 'switch') {
                 body.appendChild(self.input(self.t('b_switch_default'), 'checkbox', field.default === true || field.default === '1' || field.default === 1, function (v) { if (v) { field.default = true; } else { delete field.default; } }));
-            } else if (p === 'required' || p === 'multiple' || p === 'inline') {
-                body.appendChild(self.input(PROP_LABELS[p], 'checkbox', !!field[p], function (v) { field[p] = v; self.renderCanvasOnly(); }));
+            } else if (p === 'required' || p === 'multiple' || p === 'inline' || p === 'bank_lookup' || p === 'address_suggest' || p === 'with_country') {
+                var checked = DEFAULT_ON[p] ? field[p] !== false : !!field[p];
+                body.appendChild(self.input(PROP_LABELS[p], 'checkbox', checked, function (v) { field[p] = v; self.renderCanvasOnly(); }));
+            } else if (p === 'source') {
+                body.appendChild(self.sourceEditor(field));
+            } else if (p === 'subfields') {
+                body.appendChild(self.subfieldsEditor(field));
             } else if (p === 'width') {
                 body.appendChild(self.input(PROP_LABELS.width, 'select', field.width || '1-1', function (v) { field.width = v; }, '', WIDTHS));
             } else if (p === 'columns') {
@@ -274,11 +395,12 @@
             } else if (p === 'help' || p === 'text') {
                 body.appendChild(self.input(PROP_LABELS[p], 'textarea', field[p] || '', function (v) { field[p] = v; self.renderCanvasOnly(); }, p === 'text' && field.type === 'consent' ? 'Links als [Text](/pfad/) möglich.' : ''));
             } else if (p === 'options') {
-                body.appendChild(self.optionsEditor(field));
+                // bei Datenquelle keine manuelle Liste
+                if (!field.source) { body.appendChild(self.optionsEditor(field)); }
             } else if (p === 'show_if') {
                 body.appendChild(self.conditionEditor(field, self.step, self.selected));
             } else {
-                var type = ['min', 'max', 'step', 'rows', 'maxlength', 'min_days_ahead'].indexOf(p) !== -1 && field.type !== 'date' && field.type !== 'time' ? 'number' : (field.type === 'date' && (p === 'min' || p === 'max') ? 'date' : 'text');
+                var type = ['min', 'max', 'step', 'rows', 'maxlength', 'min_days_ahead', 'min_rows', 'max_rows'].indexOf(p) !== -1 && field.type !== 'date' && field.type !== 'time' ? 'number' : (field.type === 'date' && (p === 'min' || p === 'max') ? 'date' : 'text');
                 body.appendChild(self.input(PROP_LABELS[p] || (PROP_I18N[p] ? self.t(PROP_I18N[p]) : p), type, field[p] == null ? '' : field[p], function (v) { field[p] = type === 'number' && v !== '' ? Number(v) : v; }));
             }
         });
@@ -311,6 +433,80 @@
         control.addEventListener(type === 'select' ? 'change' : 'input', function () { onchange(control.value); });
         if (help) { control.setAttribute('aria-describedby', id + '-help'); }
         return el('div', { class: 'form-group' }, [el('label', { for: id, text: label }), control, help ? el('p', { class: 'help-block', id: id + '-help', text: help }) : null]);
+    };
+
+    // Herkunft der Optionen: manuell, YForm-Tabelle, gespeicherte Abfrage oder eigene Quelle (EP)
+    Builder.prototype.sourceEditor = function (field) {
+        var self = this;
+        var src = this.config.sources || { tables: {}, named: {} };
+        var choices = { '': 'Manuell (Liste unten)' };
+        if (Object.keys(src.tables).length) { choices.yform = 'Aus YForm-Tabelle'; }
+        Object.keys(src.named).forEach(function (k) { choices[k] = (k.indexOf('query:') === 0 ? 'Abfrage: ' : 'Quelle: ') + src.named[k]; });
+        var box = el('div', { class: 'fs-b-source' });
+        box.appendChild(this.input(PROP_LABELS.source, 'select', field.source || '', function (v) { field.source = v; self.render(); }, Object.keys(choices).length === 1 ? 'Weitere Quellen: YForm-Tabellen oder gespeicherte Abfragen (Einstellungen, nur Admins).' : '', choices));
+        if (field.source === 'yform') {
+            var tables = {}; Object.keys(src.tables).forEach(function (t) { tables[t] = src.tables[t].label + ' (' + t + ')'; });
+            if (!field.source_table || !src.tables[field.source_table]) { field.source_table = Object.keys(tables)[0]; }
+            box.appendChild(this.input('Tabelle', 'select', field.source_table, function (v) { field.source_table = v; field.source_label = ''; self.render(); }, '', tables));
+            var cols = src.tables[field.source_table] ? src.tables[field.source_table].fields : {};
+            var colOpts = {}; Object.keys(cols).forEach(function (c) { colOpts[c] = cols[c] + (cols[c] !== c ? ' (' + c + ')' : ''); });
+            if (!field.source_label || !cols[field.source_label]) { field.source_label = Object.keys(cols).filter(function (c) { return c !== 'id'; })[0] || 'id'; }
+            box.appendChild(this.input('Angezeigter Text', 'select', field.source_label, function (v) { field.source_label = v; }, '', colOpts));
+            box.appendChild(this.input('Gespeicherter Wert', 'select', field.source_value || 'id', function (v) { field.source_value = v; }, '', colOpts));
+            var filterOpts = { '': '– kein Filter –' }; Object.keys(colOpts).forEach(function (c) { filterOpts[c] = colOpts[c]; });
+            box.appendChild(this.input('Nur Einträge, bei denen …', 'select', field.source_filter_field || '', function (v) { field.source_filter_field = v; self.render(); }, '', filterOpts));
+            if (field.source_filter_field) { box.appendChild(this.input('… gleich ist', 'text', field.source_filter_value || '', function (v) { field.source_filter_value = v; }, 'z. B. 1 für „aktiv“')); }
+            var orderOpts = { '': 'wie angezeigter Text' }; Object.keys(colOpts).forEach(function (c) { orderOpts[c] = colOpts[c]; });
+            box.appendChild(this.input('Sortieren nach', 'select', field.source_order || '', function (v) { field.source_order = v; }, '', orderOpts));
+        }
+        return box;
+    };
+
+    // Unterfelder einer Wiederholgruppe
+    Builder.prototype.subfieldsEditor = function (field) {
+        var self = this;
+        var types = this.config.subfieldTypes || { text: 'Text' };
+        var widths = { '1-1': 'Ganz', '1-2': 'Halb', '1-3': 'Drittel', '2-3': 'Zwei Drittel' };
+        var wrap = el('div', { class: 'form-group fs-b-subfields' }, [el('label', { text: PROP_LABELS.subfields })]);
+        (field.subfields = field.subfields || []).forEach(function (sub, i) {
+            var card = el('div', { class: 'fs-b-subfield' });
+            var label = el('input', { class: 'form-control input-sm', value: sub.label || '', placeholder: 'Beschriftung', 'aria-label': 'Beschriftung Feld ' + (i + 1) });
+            label.addEventListener('input', function () {
+                var auto = !sub.name || sub.name === slug(sub._prevLabel || '');
+                sub._prevLabel = label.value; sub.label = label.value;
+                if (auto) { sub.name = slug(label.value); name.value = sub.name; }
+            });
+            var name = el('input', { class: 'form-control input-sm', value: sub.name || '', placeholder: 'feldname', 'aria-label': 'Feldname Feld ' + (i + 1) });
+            name.addEventListener('input', function () { sub.name = slug(name.value); });
+            var type = el('select', { class: 'form-control input-sm', 'aria-label': 'Typ Feld ' + (i + 1) });
+            Object.keys(types).forEach(function (t) { type.appendChild(el('option', { value: t, selected: t === sub.type, text: types[t] })); });
+            type.addEventListener('change', function () { sub.type = type.value; self.render(); });
+            var width = el('select', { class: 'form-control input-sm', 'aria-label': 'Breite Feld ' + (i + 1) });
+            Object.keys(widths).forEach(function (w) { width.appendChild(el('option', { value: w, selected: w === (sub.width || '1-2'), text: widths[w] })); });
+            width.addEventListener('change', function () { sub.width = width.value; });
+            var req = el('input', { type: 'checkbox', checked: !!sub.required, 'aria-label': 'Pflichtfeld Feld ' + (i + 1) });
+            req.addEventListener('change', function () { sub.required = req.checked; });
+            var tools = el('div', { class: 'btn-group btn-group-xs' }, [
+                el('button', { type: 'button', class: 'btn btn-default', title: 'nach oben', disabled: i === 0, onclick: function () { field.subfields.splice(i - 1, 0, field.subfields.splice(i, 1)[0]); self.render(); } }, ['↑']),
+                el('button', { type: 'button', class: 'btn btn-default', title: 'nach unten', disabled: i === field.subfields.length - 1, onclick: function () { field.subfields.splice(i + 1, 0, field.subfields.splice(i, 1)[0]); self.render(); } }, ['↓']),
+                el('button', { type: 'button', class: 'btn btn-danger', title: 'entfernen', onclick: function () { field.subfields.splice(i, 1); self.render(); } }, ['×'])
+            ]);
+            card.appendChild(el('div', { class: 'fs-b-subfield__row' }, [type, label, name]));
+            card.appendChild(el('div', { class: 'fs-b-subfield__row' }, [width, el('label', { class: 'fs-b-subfield__req' }, [req, ' Pflicht']), tools]));
+            if (sub.type === 'select') {
+                var opts = el('textarea', { class: 'form-control input-sm', rows: 3, placeholder: 'Eine Option je Zeile, optional wert|Text', 'aria-label': 'Optionen Feld ' + (i + 1) });
+                opts.value = (sub.options || []).map(function (o) { return typeof o === 'string' ? o : (o.value + '|' + o.label); }).join('\n');
+                opts.addEventListener('input', function () { sub.options = opts.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) { return l.indexOf('|') === -1 ? slug(l) + '|' + l : l; }); });
+                card.appendChild(opts);
+            }
+            wrap.appendChild(card);
+        });
+        wrap.appendChild(el('button', { type: 'button', class: 'btn btn-default btn-xs', onclick: function () {
+            var n = field.subfields.length + 1;
+            field.subfields.push({ type: 'text', label: 'Feld ' + n, name: 'feld_' + n, width: '1-2' });
+            self.render();
+        } }, ['+ Feld']));
+        return wrap;
     };
 
     Builder.prototype.optionsEditor = function (field) {
@@ -508,7 +704,7 @@
 
     Builder.prototype.serialize = function () {
         // Hilfswerte entfernen
-        this.definition.steps.forEach(function (st) { st.fields.forEach(function (f) { (f.options || []).forEach(function (o) { delete o._prevLabel; }); }); });
+        this.definition.steps.forEach(function (st) { st.fields.forEach(function (f) { (f.options || []).forEach(function (o) { delete o._prevLabel; }); (f.subfields || []).forEach(function (o) { delete o._prevLabel; }); }); });
         return { definition: JSON.stringify(this.definition), settings: JSON.stringify(this.settings) };
     };
 

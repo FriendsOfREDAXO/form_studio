@@ -37,12 +37,33 @@ final class Submission
         $sql = rex_sql::factory()->setTable(self::table());
         $sql->setValue('form_id', $form->id);
         $sql->setValue('token', $token);
+        // Vertrauliche Felder (z. B. IBAN) nur maskiert vorhalten – der Download ist für die anfragende Person
+        $data = self::publicData($data);
         $sql->setValue('data', json_encode($data, JSON_UNESCAPED_UNICODE));
         $sql->setValue('domain', $domain);
         $sql->setValue('clang_id', rex_clang::getCurrentId());
         $sql->setValue('createdate', $created);
         $sql->insert();
         return new self((int) $sql->getLastId(), $form->id, $token, $data, $domain, $created);
+    }
+
+    /**
+     * Daten für die anfragende Person: vertrauliche Felder maskiert (Wert und Anzeige).
+     *
+     * @param list<array<string, mixed>> $data
+     * @return list<array<string, mixed>>
+     */
+    public static function publicData(array $data): array
+    {
+        foreach ($data as &$item) {
+            if (isset($item['display_public'])) {
+                $item['display'] = (string) $item['display_public'];
+                $item['value'] = (string) $item['display_public'];
+                unset($item['display_public']);
+            }
+        }
+        unset($item);
+        return $data;
     }
 
     public static function getByToken(string $token): ?self

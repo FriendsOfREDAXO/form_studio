@@ -41,18 +41,32 @@ rex_sql_table::get(rex::getTable('form_studio_attempt'))
     ->ensure();
 
 // Modul „Form Studio: Formular“ anlegen bzw. aktualisieren (auch bei Re-Install und Update).
-// Bestehende Blöcke bleiben gültig: REX_VALUE[1] ist weiterhin das Formular, die neuen Werte 2 und 3 sind optional.
+// Bestehende Blöcke bleiben gültig: REX_VALUE[1] ist weiterhin das Formular, die Werte 2 und 3 sind optional.
 // __DIR__ statt $this->getPath(): update.php läuft aus dem Ordner der neuen Version.
-$module = rex_sql::factory()->getArray('SELECT id FROM ' . rex::getTable('module') . ' WHERE `key` = "form_studio"');
-$sql = rex_sql::factory()->setTable(rex::getTable('module'));
-$sql->setValue('name', 'Form Studio: Formular');
-$sql->setValue('input', rex_file::get(__DIR__ . '/module/input.php'));
-$sql->setValue('output', rex_file::get(__DIR__ . '/module/output.php'));
-$sql->addGlobalUpdateFields('form_studio');
-if ($module) {
-    $sql->setWhere(['id' => $module[0]['id']])->update();
-} else {
-    $sql->setValue('key', 'form_studio');
-    $sql->addGlobalCreateFields('form_studio');
-    $sql->insert();
+// Ein im Projekt angepasstes Modul (Code weicht von allen mitgelieferten Fassungen ab) wird NICHT überschrieben.
+$fsModuleHash = static fn (string $code): string => md5(trim(str_replace("\r\n", "\n", $code)));
+$fsInput = rex_file::get(__DIR__ . '/module/input.php') ?? '';
+$fsOutput = rex_file::get(__DIR__ . '/module/output.php') ?? '';
+// mitgelieferte Fassungen (0.1.0-dev, 0.1.0, 0.2.0) und die aktuelle
+$fsKnownInput = ['dd562350606ad946e0b723da5a9351be', 'aee2159943b00a262ecf69e15a8be147', $fsModuleHash($fsInput)];
+$fsKnownOutput = ['78cdec611b5524455ca642909ba7e1d7', 'b8a3fac69dd44fb799dba67393bfa64c', '765442e06e21510df863063cbf91fd5d', $fsModuleHash($fsOutput)];
+
+$module = rex_sql::factory()->getArray('SELECT id, input, output FROM ' . rex::getTable('module') . ' WHERE `key` = "form_studio"');
+$fsCustomized = $module
+    && (!in_array($fsModuleHash((string) $module[0]['input']), $fsKnownInput, true)
+        || !in_array($fsModuleHash((string) $module[0]['output']), $fsKnownOutput, true));
+$this->setConfig('module_customized', $fsCustomized);
+if (!$fsCustomized) {
+    $sql = rex_sql::factory()->setTable(rex::getTable('module'));
+    $sql->setValue('name', 'Form Studio: Formular');
+    $sql->setValue('input', $fsInput);
+    $sql->setValue('output', $fsOutput);
+    $sql->addGlobalUpdateFields('form_studio');
+    if ($module) {
+        $sql->setWhere(['id' => $module[0]['id']])->update();
+    } else {
+        $sql->setValue('key', 'form_studio');
+        $sql->addGlobalCreateFields('form_studio');
+        $sql->insert();
+    }
 }

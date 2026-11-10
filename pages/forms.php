@@ -14,7 +14,7 @@ $csrf = rex_csrf_token::factory('form_studio_forms');
 $message = '';
 
 // Aktionen
-if ('' !== $func && in_array($func, ['create', 'delete', 'sync', 'save'], true) && !$csrf->isValid()) {
+if ('' !== $func && in_array($func, ['create', 'delete', 'sync', 'save', 'duplicate'], true) && !$csrf->isValid()) {
     echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     $func = '';
 }
@@ -48,6 +48,26 @@ if ('create' === $func) {
                 $message .= rex_view::warning(rex_i18n::msg('form_studio_import_skipped') . '<ul><li>' . implode('</li><li>', array_map('rex_escape', $skipped)) . '</li></ul>');
             }
         }
+    }
+} elseif ('duplicate' === $func && $id) {
+    // Gleiche Berechtigung wie die Seite (form_studio[]); Admins haben sie immer
+    $user = rex::requireUser();
+    $original = Form::get($id);
+    if (!$user->isAdmin() && !$user->hasPerm('form_studio[]')) {
+        $message = rex_view::error(rex_i18n::msg('form_studio_duplicate_denied'));
+        $func = '';
+    } elseif (!$original || null === ($copyId = Form::duplicate($id))) {
+        $message = rex_view::error(rex_i18n::msg('form_studio_duplicate_missing'));
+        $func = '';
+    } else {
+        $copy = Form::get($copyId);
+        $message = rex_view::success(rex_i18n::msg('form_studio_duplicate_done', rex_escape($original->name), rex_escape((string) $copy?->name)));
+        if ('' !== (string) $original->setting('yform_table', '')) {
+            $message .= rex_view::info(rex_i18n::msg('form_studio_duplicate_table', rex_escape((string) $original->setting('yform_table', '')), rex_escape($copy ? YFormSync::tableName($copy) : '')));
+        }
+        // Nach dem Duplizieren direkt die Kopie bearbeiten (Redirect, damit ein Neuladen nicht erneut kopiert)
+        rex_set_session('form_studio_flash', $message);
+        rex_response::sendRedirect(rex_url::currentBackendPage(['func' => 'edit', 'id' => $copyId], false));
     }
 } elseif ('delete' === $func && $id) {
     rex_sql::factory()->setQuery('DELETE FROM ' . Form::table() . ' WHERE id = ?', [$id]);
@@ -84,6 +104,11 @@ if ('create' === $func) {
     $func = 'edit';
 }
 
+// Meldung aus einem Redirect (z. B. nach dem Duplizieren)
+if ('' === $message && '' !== ($flash = (string) rex_session('form_studio_flash', 'string', ''))) {
+    $message = $flash;
+    rex_unset_session('form_studio_flash');
+}
 echo $message;
 
 if ('edit' === $func && ($form = Form::get($id))) {
@@ -107,6 +132,10 @@ if ('edit' === $func && ($form = Form::get($id))) {
         'form_studio_set_store_yform', 'form_studio_set_store_yform_help', 'form_studio_set_yform_table', 'form_studio_set_yform_table_help',
         'form_studio_set_draft', 'form_studio_set_draft_help', 'form_studio_set_draft_days',
         'form_studio_set_datalayer', 'form_studio_set_datalayer_help',
+        'form_studio_s_design', 'form_studio_s_design_help', 'form_studio_set_class_form', 'form_studio_set_class_control', 'form_studio_set_class_control_help',
+        'form_studio_set_class_select', 'form_studio_set_class_select_help', 'form_studio_set_class_textarea', 'form_studio_set_class_textarea_help',
+        'form_studio_set_class_checkbox', 'form_studio_set_class_radio', 'form_studio_set_class_button_primary', 'form_studio_set_class_button_primary_help',
+        'form_studio_set_class_button_secondary', 'form_studio_set_class_button_secondary_help',
     ];
     $config = [
         'types' => FieldTypes::all(),
@@ -119,6 +148,8 @@ if ('edit' === $func && ($form = Form::get($id))) {
         'mediaTypes' => 'jpg,jpeg,png,gif,svg,webp,avif',
         'i18n' => array_combine($i18nKeys, array_map(static fn (string $k): string => rex_i18n::rawMsg($k), $i18nKeys)),
         'settingsUrl' => rex::getUser()?->isAdmin() ? rex_url::backendPage('form_studio/settings') : '',
+        'sources' => FriendsOfRedaxo\FormStudio\OptionSource::builderConfig(),
+        'subfieldTypes' => FieldTypes::SUBFIELD_TYPES,
     ];
     $data = ['name' => $form->name, 'definition' => $form->definition, 'settings' => $form->settings];
     $usage = rex_sql::factory()->getArray('SELECT s.article_id, a.name FROM ' . rex::getTable('article_slice') . ' s JOIN ' . rex::getTable('module') . ' m ON m.id = s.module_id AND m.`key` = "form_studio" JOIN ' . rex::getTable('article') . ' a ON a.id = s.article_id AND a.clang_id = s.clang_id WHERE s.value1 = ?', [(string) $form->id]);
@@ -176,6 +207,7 @@ $list->addColumn('actions', '', -1, ['<th>Aktionen</th>', '<td>###VALUE###</td>'
 $list->setColumnFormat('actions', 'custom', static function (array $p) use ($csrf) {
     $id = (int) $p['list']->getValue('id');
     return '<a href="' . rex_url::currentBackendPage(['func' => 'edit', 'id' => $id]) . '"><i class="rex-icon fa-pencil"></i> Gestalten</a> &nbsp; '
+        . '<a href="' . rex_url::currentBackendPage(['func' => 'duplicate', 'id' => $id] + $csrf->getUrlParams()) . '" title="' . rex_escape(rex_i18n::msg('form_studio_duplicate_title')) . '"><i class="rex-icon fa-clone" aria-hidden="true"></i> ' . rex_i18n::msg('form_studio_duplicate') . '</a> &nbsp; '
         . '<a href="' . rex_url::currentBackendPage(['func' => 'delete', 'id' => $id] + $csrf->getUrlParams()) . '" data-confirm="Formular löschen?"><i class="rex-icon rex-icon-delete"></i> Löschen</a>';
 });
 

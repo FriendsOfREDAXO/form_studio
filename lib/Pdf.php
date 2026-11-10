@@ -18,12 +18,14 @@ final class Pdf
         return rex_addon::get('pdfout')->isAvailable() && class_exists(PdfOut::class);
     }
 
-    public static function html(Form $form, Submission $submission): string
+    /** @param list<array<string, mixed>>|null $items null = Daten der Einsendung (für die anfragende Person maskiert) */
+    public static function html(Form $form, Submission $submission, ?array $items = null): string
     {
         $sender = Sender::forDomain($submission->domain);
         $fragment = new rex_fragment();
         $fragment->setVar('form', $form, false);
         $fragment->setVar('submission', $submission, false);
+        $fragment->setVar('items', $items ?? $submission->data, false);
         $fragment->setVar('sender', $sender, false);
         $fragment->setVar('logo', self::logoDataUri($sender['logo']), false);
         // Eigene Vorlage (REDAXO-Template) – fehlt sie, gilt das Standard-Layout
@@ -35,11 +37,12 @@ final class Pdf
     }
 
     /** PDF als Binärstring (für Mail-Anhänge) */
-    public static function render(Form $form, Submission $submission): string
+    /** @param list<array<string, mixed>>|null $items */
+    public static function render(Form $form, Submission $submission, ?array $items = null): string
     {
         $pdf = new PdfOut();
         $pdf->setPaper('A4', 'portrait');
-        $pdf->loadHtml(self::html($form, $submission));
+        $pdf->loadHtml(self::html($form, $submission, $items));
         $pdf->render();
         return (string) $pdf->output();
     }

@@ -16,12 +16,13 @@ $title = (string) $form->setting('pdf_title', $form->name);
 $intro = (string) $form->setting('pdf_intro', 'Vielen Dank für Ihre Anfrage. Diese Übersicht enthält Ihre Angaben; wir melden uns schnellstmöglich bei Ihnen.');
 $outro = (string) $form->setting('pdf_outro', '');
 $signature = (bool) $form->setting('pdf_signature', false);
-$signatureLabels = array_values(array_filter(array_map('trim', explode('|', (string) $form->setting('pdf_signature_labels', 'Ort, Datum | Unterschrift'))), 'strlen'));
+$signatureLabels = array_values(array_filter(array_map('trim', explode('|', (string) $form->setting('pdf_signature_labels', 'Ort, Datum | Unterschrift'))), static fn (string $s): bool => '' !== $s));
 $date = date('d.m.Y, H:i', strtotime($submission->created)) . ' Uhr';
 $contact = array_filter([$sender['phone'] ? 'Tel. ' . $sender['phone'] : '', $sender['email'], $sender['web']]);
 // Angaben nach Schritten gliedern (wie „Ihre Angaben im Überblick“)
 $byName = [];
-foreach ($submission->data as $item) {
+// Datenfassung: vollständig fürs Hotel, maskiert für die anfragende Person (Variable „items“)
+foreach ((array) ($this->getVar('items') ?: $submission->data) as $item) {
     if ('' !== (string) $item['display']) {
         $byName[(string) $item['name']] = $item;
     }

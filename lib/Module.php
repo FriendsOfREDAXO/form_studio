@@ -65,14 +65,14 @@ final class Module
             ? ' <a class="btn btn-default btn-xs" href="' . rex_url::backendPage('form_studio/forms', ['func' => 'edit', 'id' => $form->id]) . '"><i class="rex-icon fa-pencil" aria-hidden="true"></i> ' . rex_i18n::msg('form_studio_module_edit') . '</a>'
             : '';
 
-        $html = '<div class="fs-b-preview">';
-        $html .= '<p class="fs-b-preview__head"><i class="rex-icon fa-wpforms" aria-hidden="true"></i> <strong>' . rex_escape($form->name) . '</strong> '
+        $html = '<div class="fs-b-slice-preview">';
+        $html .= '<p class="fs-b-slice-preview__head"><i class="rex-icon fa-wpforms" aria-hidden="true"></i> <strong>' . rex_escape($form->name) . '</strong> '
             . '(' . rex_i18n::msg('form_studio_module_counts', count($steps), count($form->valueFields())) . ')' . $edit . '</p>';
         if (!$form->active) {
             $html .= '<div class="alert alert-warning">' . rex_i18n::msg('form_studio_module_inactive') . '</div>';
         }
         if ($options) {
-            $html .= '<ul class="fs-b-preview__options list-unstyled">';
+            $html .= '<ul class="fs-b-slice-preview__options list-unstyled">';
             if (isset($options['success_text'])) {
                 $html .= '<li>' . rex_i18n::msg('form_studio_module_success_text') . ': <em>' . rex_escape(mb_strimwidth($options['success_text'], 0, 120, ' …')) . '</em></li>';
             }
@@ -83,7 +83,7 @@ final class Module
         }
 
         if (count($steps) > 1) {
-            $html .= '<ol class="fs-b-preview__steps" style="margin:0 0 10px;padding-left:1.4em" aria-label="' . rex_i18n::msg('form_studio_module_steps') . '">';
+            $html .= '<ol class="fs-b-slice-preview__steps" style="margin:0 0 10px;padding-left:1.4em" aria-label="' . rex_i18n::msg('form_studio_module_steps') . '">';
             foreach ($steps as $i => $step) {
                 $html .= '<li' . (0 === $i ? ' aria-current="step" style="font-weight:700"' : '') . '>' . rex_escape((string) ($step['title'] ?? '') ?: rex_i18n::msg('form_studio_step_default', $i + 1))
                     . (!empty($step['show_if']) ? ' (' . rex_i18n::msg('form_studio_conditional') . ')' : '') . '</li>';
@@ -99,7 +99,7 @@ final class Module
             . '<style>body{margin:0;padding:16px;background:#fff;color:#333;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}'
             . '.fs [data-fs-step]:not([data-fs-step="0"]),.fs .fs-progress,.fs .fs-review,.fs .fs-submit,.fs .fs-required-note,.fs .fs-nav,.fs .fs-hp{display:none}</style>'
             . '</head><body>' . self::withoutScripts(Renderer::render($form, [], [], '', $options)) . '</body></html>';
-        $html .= '<iframe class="fs-b-preview__frame" style="display:block;width:100%;height:420px;border:1px solid rgba(128,128,128,.4);border-radius:4px;background:#fff" title="' . rex_escape(rex_i18n::rawMsg('form_studio_module_preview_title', $form->name)) . '" sandbox="allow-same-origin" inert tabindex="-1" loading="lazy"'
+        $html .= '<iframe class="fs-b-slice-preview__frame" style="display:block;width:100%;height:420px;border:1px solid rgba(128,128,128,.4);border-radius:4px;background:#fff" title="' . rex_escape(rex_i18n::rawMsg('form_studio_module_preview_title', $form->name)) . '" sandbox="allow-same-origin" inert tabindex="-1" loading="lazy"'
             . ' onload="try{this.style.height=Math.min(900,this.contentDocument.body.offsetHeight+2)+\'px\'}catch(e){}"'
             . ' srcdoc="' . rex_escape($doc) . '"></iframe>';
         return $html . '</div>';

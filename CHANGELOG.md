@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 (2026-11-10)
+
+Führt die Linie 0.2.0 (formslider-Funktionen) mit den bisher unveröffentlichten Funktionen aus dem Projekteinsatz zusammen. Bestehende Formulare, Einstellungen und Einbindungen bleiben unverändert; alle neuen Funktionen sind standardmäßig aus.
+
+- **Formular duplizieren** (Formularliste): Kopie „<Name> (Kopie)“ mit neuem Schlüssel, Definition, Einstellungen und Beschreibung, inaktiv. Eine fest eingetragene YForm-Tabelle wird nicht übernommen – die Kopie bekommt beim ersten Abgleich eine eigene Tabelle. EP `FORM_STUDIO_DUPLICATE_SETTINGS`.
+- **Datum und Uhrzeit nie vorbelegen** (Einstellungen → Datum & Uhrzeit, Standard aus): Datums- und Zeitfelder bleiben leer, auch bei festen oder relativen Vorgabewerten (`now`, `now+4h`, `today+7d`). Der Vorgabewert ist jetzt auch im Builder einstellbar.
+- **Eigenes CSS und Frameworks:** Stylesheet abschaltbar (Einstellungen → Darstellung); zusätzliche CSS-Klassen für Formular, Felder, Checkboxen/Optionsfelder und Buttons global und je Formular (z. B. UIkit, Bootstrap); weitere CSS-Variablen (`--fs-focus-width`, `--fs-button-secondary-*`); `FormStudio.init(element)` für nachgeladene Formulare; Skript arbeitet nur im eigenen Formular (mehrere Formulare und Erfolgsmeldungen je Seite).
+- **Modul:** Ein im Projekt angepasstes Modul „Form Studio: Formular“ wird bei Update/Re-Install nicht mehr überschrieben (Hinweis in den Einstellungen).
+- **Auswahl aus Datenquellen:** YForm-Tabelle (ohne SQL), gespeicherte Abfragen (nur Admins, nur SELECT) und eigene Quellen (EP `FORM_STUDIO_OPTION_SOURCES`) für Auswahlliste, Einfach-/Mehrfachauswahl und Bildkacheln.
+- **Neue Feldtypen:** Wiederholgruppe (Unterfelder, Min/Max, barrierefreies Hinzufügen/Entfernen), IBAN (Prüfziffer, Bank/BIC über openIBAN ohne Übertragung der Kontonummer), Adresse (Vorschläge über Photon/OpenStreetMap per Server-Proxy mit Zwischenspeicher und Begrenzung, PLZ-Prüfung je Land).
+- **YForm mit dem AddOn „Fields“:** Reiter je Schritt (`fields_interactive`), `fields_iban`, `fields_table` für Wiederholgruppen; Feldreihenfolge folgt dem Formular.
+- **IBAN-Datenschutz:** Kopie-E-Mail, Kopie-PDF, PDF-Download und Zwischenspeicher zeigen die IBAN nur maskiert (Land, Prüfziffer, letzte 4 Stellen, Bank); E-Mail und PDF an das Haus vollständig.
+- **Verschlüsselung mit yform_encryption:** IBAN, Adressen und Wiederholgruppen werden in der YForm-Tabelle automatisch verschlüsselt (Feldzuordnung und Spaltentyp werden beim Abgleich gesetzt).
+- Vorschau: Höhe begrenzt (eigenes Scrollen), Auswahl eines Felds im Builder springt in der Vorschau dorthin.
+- **Live-Vorschau im Builder:** zeigt den ungespeicherten Stand mit dem Frontend-Renderer (API `form_studio_preview`, nur Backend mit Recht und CSRF-Token), aktualisiert sich bei jeder Änderung, folgt dem gewählten Schritt, Breiten Desktop/Tablet/Smartphone, Absenden deaktiviert; eigene Website-Styles über den EP `FORM_STUDIO_PREVIEW_HEAD`. Neu: `Form::preview()` für ungespeicherte Stände.
+- Fix: Ja/Nein-Felder werden auch neben den neuen Feldtypen (Wiederholgruppe als `fields_table`, verschlüsselte Felder) als 0/1 in YForm gespeichert.
+
 ## 0.2.0 (2026-10-18)
 
 Übernimmt die Funktionen von formslider – im eigenen Stil. Alle neuen Funktionen sind je Formular einschaltbar und standardmäßig aus; bestehende Formulare bleiben unverändert.

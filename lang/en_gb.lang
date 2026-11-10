@@ -135,3 +135,28 @@ form_studio_pdf_tpl_create = Create template
 form_studio_pdf_tpl_created = Template "{0}" created.
 form_studio_pdf_tpl_edit = Edit now
 form_studio_pdf_tpl_no_pdfout = PDFs require the pdfout addon.
+
+# Duplicate
+form_studio_duplicate = Duplicate
+form_studio_duplicate_title = Create a copy of this form (inactive)
+form_studio_duplicate_done = Form “{0}” duplicated. The copy “{1}” is inactive – switch it on under “Active” once it is ready.
+form_studio_duplicate_table = The copy does not store into the original's YForm table {0}; once “store submissions” is on, it uses its own table ({1}).
+form_studio_duplicate_missing = The form was not found.
+form_studio_duplicate_denied = You lack the Form Studio permission.
+
+# Appearance (CSS classes for frameworks)
+form_studio_s_design = CSS classes (frameworks)
+form_studio_s_design_help = Additional CSS classes, e.g. from UIkit or Bootstrap. They are added to the fs classes; empty = default from the Form Studio settings.
+form_studio_set_class_form = Classes for the form
+form_studio_set_class_control = Classes for input fields
+form_studio_set_class_control_help = e.g. “uk-input” (UIkit) or “form-control” (Bootstrap)
+form_studio_set_class_select = Classes for select lists
+form_studio_set_class_select_help = e.g. “uk-select” or “form-select”; empty = like input fields
+form_studio_set_class_textarea = Classes for multi-line fields
+form_studio_set_class_textarea_help = e.g. “uk-textarea”; empty = like input fields
+form_studio_set_class_checkbox = Classes for checkboxes
+form_studio_set_class_radio = Classes for radio buttons
+form_studio_set_class_button_primary = Classes for the main button (next, submit)
+form_studio_set_class_button_primary_help = e.g. “uk-button uk-button-primary” or “btn btn-primary”
+form_studio_set_class_button_secondary = Classes for other buttons (back, PDF, − / +)
+form_studio_set_class_button_secondary_help = e.g. “uk-button uk-button-default” or “btn btn-outline-secondary”

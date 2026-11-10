@@ -392,6 +392,42 @@
                 if (field.hidden || field.querySelector('.fs-consent')) { return; }
                 var labelEl = field.querySelector('.fs-label');
                 var text = [];
+                // Wiederholgruppe: je Zeile „1. Name: …, E-Mail: …“
+                var rep = field.querySelector('[data-fs-repeater]');
+                if (rep) {
+                    Array.prototype.forEach.call(rep.querySelectorAll('[data-fs-rows] > [data-fs-row]'), function (row, i) {
+                        var parts = [];
+                        Array.prototype.forEach.call(row.querySelectorAll('.fs-subfield'), function (sub) {
+                            var c = sub.querySelector('input, select, textarea');
+                            var v = c.tagName === 'SELECT' ? (c.value ? c.options[c.selectedIndex].text : '') : c.value;
+                            if (c.type === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) { v = v.split('-').reverse().join('.'); }
+                            if (v) { parts.push(sub.querySelector('label').textContent.replace(/\s*\*\s*$/, '').trim() + ': ' + v); }
+                        });
+                        if (parts.length) { text.push((i + 1) + '. ' + parts.join(', ')); }
+                    });
+                    if (text.length && labelEl) {
+                        var ri = el('div', 'fs-review__item fs-review__item--wide');
+                        ri.appendChild(el('dt', null, labelEl.textContent.replace(/\s*\*\s*$/, '').trim()));
+                        var dd = el('dd');
+                        text.forEach(function (t, i) { if (i) { dd.appendChild(document.createElement('br')); } dd.appendChild(document.createTextNode(t)); });
+                        ri.appendChild(dd);
+                        dl.appendChild(ri);
+                    }
+                    return;
+                }
+                // Adresse: „Straße Nr, PLZ Ort“; IBAN mit Bank
+                var addr = field.querySelector('.fs-address');
+                if (addr) {
+                    var g = function (sel) { var x = addr.querySelector(sel); return x ? (x.tagName === 'SELECT' ? x.options[x.selectedIndex].text : x.value.trim()) : ''; };
+                    var line = [g('[name$="[street]"]'), (g('[name$="[zip]"]') + ' ' + g('[name$="[city]"]')).trim(), addr.querySelector('[data-fs-address-country]') ? g('[data-fs-address-country]') : ''].filter(Boolean).join(', ');
+                    if (line && labelEl) {
+                        var ai = el('div', 'fs-review__item');
+                        ai.appendChild(el('dt', null, labelEl.textContent.replace(/\s*\*\s*$/, '').trim()));
+                        ai.appendChild(el('dd', null, line));
+                        dl.appendChild(ai);
+                    }
+                    return;
+                }
                 Array.prototype.forEach.call(field.querySelectorAll('input, select, textarea'), function (el) {
                     if (el.disabled || !el.name || (el.type === 'hidden' && !el.hasAttribute('data-a11y-fs'))) { return; }
                     if (el.getAttribute('role') === 'switch') {
@@ -434,6 +470,185 @@
             }
             c.querySelector('[data-fs-dec]').addEventListener('click', function () { change(-1); });
             c.querySelector('[data-fs-inc]').addEventListener('click', function () { change(1); });
+        });
+
+        // ---- Wiederholgruppen: Zeilen hinzufügen/entfernen, Nummern und Namen neu vergeben ----
+        Array.prototype.forEach.call(form.querySelectorAll('[data-fs-repeater]'), function (rep) {
+            var list = rep.querySelector('[data-fs-rows]');
+            var tpl = rep.querySelector('template[data-fs-row-template]');
+            var addBtn = rep.querySelector('[data-fs-add]');
+            var status = rep.querySelector('[data-fs-repeater-status]');
+            var min = parseInt(rep.getAttribute('data-min'), 10) || 0;
+            var max = parseInt(rep.getAttribute('data-max'), 10) || 10;
+            var rowLabel = rep.getAttribute('data-row-label') || 'Eintrag';
+            function renumber() {
+                var rows = list.querySelectorAll('[data-fs-row]');
+                Array.prototype.forEach.call(rows, function (row, i) {
+                    row.querySelector('[data-fs-row-title]').textContent = rowLabel + ' ' + (i + 1);
+                    var rm = row.querySelector('[data-fs-remove]');
+                    rm.setAttribute('aria-label', rowLabel + ' ' + (i + 1) + ' entfernen');
+                    rm.hidden = rows.length <= Math.max(1, min);
+                    Array.prototype.forEach.call(row.querySelectorAll('[name]'), function (el) {
+                        el.name = el.name.replace(/\]\[(?:\d+|__I__)\]\[/, '][' + i + '][');
+                    });
+                    Array.prototype.forEach.call(row.querySelectorAll('[id]'), function (el) {
+                        var newId = el.id.replace(/-(?:\d+|__I__)-([a-z0-9_]+)$/, '-' + i + '-$1');
+                        var lbl = row.querySelector('label[for="' + el.id + '"]');
+                        el.id = newId;
+                        if (lbl) { lbl.setAttribute('for', newId); }
+                    });
+                });
+                addBtn.hidden = rows.length >= max;
+            }
+            addBtn.addEventListener('click', function () {
+                var count = list.querySelectorAll('[data-fs-row]').length;
+                if (count >= max) { return; }
+                list.insertAdjacentHTML('beforeend', tpl.innerHTML);
+                renumber();
+                var rows = list.querySelectorAll('[data-fs-row]');
+                var first = rows[rows.length - 1].querySelector('input, select, textarea');
+                if (first) { first.focus(); }
+                status.textContent = rowLabel + ' ' + rows.length + ' hinzugefügt.';
+            });
+            list.addEventListener('click', function (e) {
+                var rm = e.target.closest('[data-fs-remove]');
+                if (!rm) { return; }
+                var row = rm.closest('[data-fs-row]');
+                var rows = Array.prototype.slice.call(list.querySelectorAll('[data-fs-row]'));
+                var idx = rows.indexOf(row);
+                row.remove();
+                renumber();
+                status.textContent = rowLabel + ' ' + (idx + 1) + ' entfernt.';
+                var next = list.querySelectorAll('[data-fs-row]')[Math.max(0, idx - 1)];
+                (next ? next.querySelector('input, select, textarea') : addBtn).focus();
+                form.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            renumber();
+        });
+
+        // ---- IBAN: Vierergruppen, Prüfziffer im Browser, Bank/BIC über den Server (ohne Kontonummer) ----
+        function ibanMod97(iban) {
+            var s = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, function (c) { return String(c.charCodeAt(0) - 55); });
+            var mod = 0;
+            for (var i = 0; i < s.length; i++) { mod = (mod * 10 + parseInt(s[i], 10)) % 97; }
+            return mod;
+        }
+        Array.prototype.forEach.call(form.querySelectorAll('[data-fs-iban]'), function (input) {
+            var bankBox = input.parentNode.querySelector('[data-fs-iban-bank]');
+            var lookup = input.getAttribute('data-fs-iban-lookup');
+            var lastChecked = '';
+            function check(final) {
+                var raw = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                var ok = /^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(raw) && ibanMod97(raw) === 1;
+                if (!raw) { input.setCustomValidity(''); bankBox.textContent = ''; return; }
+                input.setCustomValidity(ok ? '' : 'Die IBAN ist nicht gültig – bitte prüfen Sie die Eingabe.');
+                if (!ok) {
+                    bankBox.textContent = final ? 'Die IBAN ist nicht gültig – bitte prüfen Sie die Eingabe.' : '';
+                    bankBox.classList.toggle('is-error', !!final);
+                    return;
+                }
+                bankBox.classList.remove('is-error');
+                if (!lookup || raw === lastChecked) { return; }
+                lastChecked = raw;
+                bankBox.textContent = '✓ IBAN gültig';
+                fetch(lookup + '&iban=' + encodeURIComponent(raw), { headers: { Accept: 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (d) {
+                        if (d && d.bank && raw === lastChecked) {
+                            bankBox.textContent = '✓ ' + d.bank.name + (d.bank.bic ? ' · BIC ' + d.bank.bic : '');
+                        }
+                    })
+                    .catch(function () {});
+            }
+            input.addEventListener('input', function () {
+                // Vierergruppen beim Tippen (Cursor am Ende bleibt erhalten)
+                var atEnd = input.selectionStart === input.value.length;
+                var raw = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 34);
+                var grouped = raw.replace(/(.{4})/g, '$1 ').trim();
+                if (atEnd && grouped !== input.value) { input.value = grouped; }
+                check(false);
+            });
+            input.addEventListener('blur', function () { check(true); });
+            if (input.value) { check(false); }
+        });
+
+        // ---- Adresse: Vorschläge beim Tippen (Combobox nach WAI-ARIA), füllt PLZ, Ort und Land ----
+        Array.prototype.forEach.call(form.querySelectorAll('[data-fs-address]'), function (box) {
+            var url = box.getAttribute('data-fs-address');
+            var countries = box.getAttribute('data-countries') || '';
+            var input = box.querySelector('[data-fs-address-input]');
+            var listbox = input && box.querySelector('[id="' + input.getAttribute('aria-controls') + '"]');
+            if (!input || !listbox) { return; }
+            var zip = box.querySelector('[data-fs-address-zip]');
+            var city = box.querySelector('[data-fs-address-city]');
+            var country = box.querySelector('[data-fs-address-country]');
+            var items = [];
+            var active = -1;
+            var timer = null;
+            var request = 0;
+            function close() {
+                listbox.hidden = true;
+                input.setAttribute('aria-expanded', 'false');
+                input.removeAttribute('aria-activedescendant');
+                active = -1;
+            }
+            function highlight(i) {
+                var opts = listbox.querySelectorAll('[role=option]');
+                active = i;
+                Array.prototype.forEach.call(opts, function (o, j) { o.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
+                if (opts[i]) { input.setAttribute('aria-activedescendant', opts[i].id); opts[i].scrollIntoView({ block: 'nearest' }); }
+            }
+            function choose(i) {
+                var it = items[i];
+                if (!it) { return; }
+                input.value = it.street;
+                if (zip) { zip.value = it.zip; }
+                if (city) { city.value = it.city; }
+                if (country && it.country) {
+                    for (var k = 0; k < country.options.length; k++) { if (country.options[k].value === it.country) { country.value = it.country; } }
+                }
+                close();
+                [input, zip, city].forEach(function (f) { if (f) { f.dispatchEvent(new Event('change', { bubbles: true })); } });
+                // Hausnummer fehlt? Dann im Straßenfeld bleiben, sonst weiter
+                if (!/\d/.test(it.street)) { input.focus(); } else if (zip && !zip.value) { zip.focus(); }
+            }
+            function render() {
+                listbox.innerHTML = '';
+                items.forEach(function (it, i) {
+                    var li = document.createElement('li');
+                    li.id = input.id + '-opt-' + i;
+                    li.setAttribute('role', 'option');
+                    li.setAttribute('aria-selected', 'false');
+                    li.className = 'fs-combobox__option';
+                    li.textContent = it.label;
+                    li.addEventListener('mousedown', function (e) { e.preventDefault(); choose(i); });
+                    listbox.appendChild(li);
+                });
+                listbox.hidden = !items.length;
+                input.setAttribute('aria-expanded', items.length ? 'true' : 'false');
+                active = -1;
+            }
+            input.addEventListener('input', function () {
+                clearTimeout(timer);
+                var q = input.value.trim();
+                if (q.length < 4) { items = []; render(); return; }
+                timer = setTimeout(function () {
+                    var mine = ++request;
+                    var extra = [zip && zip.value, city && city.value].filter(Boolean).join(' ');
+                    fetch(url + '&q=' + encodeURIComponent(q + (extra ? ' ' + extra : '')) + '&countries=' + encodeURIComponent(countries) + '&lang=' + encodeURIComponent(document.documentElement.lang || 'de'), { headers: { Accept: 'application/json' } })
+                        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+                        .then(function (d) { if (mine === request && document.activeElement === input) { items = d.items || []; render(); } })
+                        .catch(function () {});
+                }, 300);
+            });
+            input.addEventListener('keydown', function (e) {
+                if (listbox.hidden) { return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); highlight(Math.min(items.length - 1, active + 1)); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(Math.max(0, active - 1)); }
+                else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); choose(active); }
+                else if (e.key === 'Escape') { e.preventDefault(); close(); }
+            });
+            input.addEventListener('blur', function () { setTimeout(close, 150); });
         });
 
         form.addEventListener('input', apply);
@@ -586,6 +801,8 @@
         function draftable(el) {
             if (!el.name || !/^fs\[/.test(el.name) || /^(hidden|password|file|submit|button)$/.test(el.type)) { return false; }
             if (el.closest('.fs-consent')) { return false; }
+            // IBAN nie im Browser ablegen; Wiederholgruppen haben eine wechselnde Zeilenzahl (würden nur teilweise wiederhergestellt)
+            if (el.hasAttribute('data-fs-iban') || el.closest('[data-fs-repeater]')) { return false; }
             var auto = el.getAttribute('autocomplete') || '';
             return !/pass|pwd|iban|cvc|cvv|kreditkarte|credit/i.test(el.name) && !/password|^cc-|one-time-code/.test(auto);
         }
@@ -675,23 +892,29 @@
         }
     }
 
-    function boot() {
-        Array.prototype.forEach.call(document.querySelectorAll('form[data-fs-form]:not([data-fs-ready])'), function (f) {
+    // Startet alle noch nicht gestarteten Formulare unterhalb von root (Standard: ganze Seite).
+    // Jedes Formular arbeitet nur in seinem eigenen Element – mehrere Formulare je Seite sind möglich.
+    function boot(root) {
+        root = root && root.querySelectorAll ? root : document;
+        var forms = [].slice.call(root.querySelectorAll('form[data-fs-form]:not([data-fs-ready])'));
+        if (root.matches && root.matches('form[data-fs-form]:not([data-fs-ready])')) { forms.push(root); }
+        forms.forEach(function (f) {
             f.setAttribute('data-fs-ready', '');
             init(f);
         });
-        var success = document.querySelector('[data-fs-success]');
-        if (success) {
+        Array.prototype.forEach.call(root.querySelectorAll('[data-fs-success]:not([data-fs-ready])'), function (success) {
+            success.setAttribute('data-fs-ready', '');
             success.focus();
-            if (!success.hasAttribute('data-fs-ready')) {
-                success.setAttribute('data-fs-ready', '');
-                var cfg = config(success);
-                // Abgeschickt: gespeicherten Entwurf verwerfen
-                if (cfg.draft) { dropDraft(cfg.draft); }
-                emit(success, cfg, 'success', {});
-            }
-        }
+            var cfg = config(success);
+            // Abgeschickt: gespeicherten Entwurf verwerfen
+            if (cfg.draft) { dropDraft(cfg.draft); }
+            emit(success, cfg, 'success', {});
+        });
     }
 
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+    // Für nachgeladene Formulare (Ajax, Modal): FormStudio.init(element) nach dem Einfügen aufrufen
+    window.FormStudio = window.FormStudio || {};
+    window.FormStudio.init = boot;
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { boot(); }); } else { boot(); }
 })();

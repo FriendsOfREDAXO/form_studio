@@ -39,17 +39,17 @@ final class FieldTypes
             'textarea' => ['label' => 'Mehrzeiliger Text', 'icon' => 'fa-align-left', 'group' => 'input', 'value' => true,
                 'yform' => ['type' => 'textarea', 'db_type' => 'text'], 'props' => [...$common, 'placeholder', 'rows', 'maxlength']],
             'date' => ['label' => 'Datum', 'icon' => 'fa-calendar', 'group' => 'input', 'value' => true,
-                'yform' => ['type' => 'date', 'db_type' => 'date'], 'props' => [...$common, 'min', 'max', 'min_days_ahead']],
+                'yform' => ['type' => 'date', 'db_type' => 'date'], 'props' => [...$common, 'default', 'min', 'max', 'min_days_ahead']],
             'time' => ['label' => 'Uhrzeit', 'icon' => 'fa-clock-o', 'group' => 'input', 'value' => true,
-                'yform' => ['type' => 'time', 'db_type' => 'time'], 'props' => [...$common, 'min', 'max', 'step']],
+                'yform' => ['type' => 'time', 'db_type' => 'time'], 'props' => [...$common, 'default', 'min', 'max', 'step']],
             'select' => ['label' => 'Auswahlliste', 'icon' => 'fa-caret-square-o-down', 'group' => 'choice', 'value' => true, 'options' => true,
-                'yform' => ['type' => 'choice', 'db_type' => 'varchar(191)'], 'props' => [...$common, 'options', 'placeholder']],
+                'yform' => ['type' => 'choice', 'db_type' => 'varchar(191)'], 'props' => [...$common, 'source', 'options', 'placeholder']],
             'radio' => ['label' => 'Einfachauswahl', 'icon' => 'fa-dot-circle-o', 'group' => 'choice', 'value' => true, 'options' => true,
-                'yform' => ['type' => 'choice', 'db_type' => 'varchar(191)'], 'props' => [...$common, 'options', 'inline']],
+                'yform' => ['type' => 'choice', 'db_type' => 'varchar(191)'], 'props' => [...$common, 'source', 'options', 'inline']],
             'checkboxes' => ['label' => 'Mehrfachauswahl', 'icon' => 'fa-check-square-o', 'group' => 'choice', 'value' => true, 'options' => true, 'multiple' => true,
-                'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'options', 'inline']],
+                'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'source', 'options', 'inline']],
             'cards' => ['label' => 'Bildauswahl (Kacheln)', 'icon' => 'fa-th-large', 'group' => 'choice', 'value' => true, 'options' => true,
-                'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'options', 'multiple', 'columns']],
+                'yform' => ['type' => 'choice', 'db_type' => 'text'], 'props' => [...$common, 'source', 'options', 'multiple', 'columns']],
             'switch' => ['label' => 'Ja/Nein-Schalter', 'icon' => 'fa-toggle-on', 'group' => 'choice', 'value' => true,
                 'yform' => ['type' => 'checkbox', 'db_type' => 'tinyint(1)'], 'props' => [...$common, 'default', 'on_text', 'off_text']],
             'counter' => ['label' => 'Anzahl (− / +)', 'icon' => 'fa-users', 'group' => 'input', 'value' => true,
@@ -60,6 +60,12 @@ final class FieldTypes
                 'yform' => null, 'props' => ['text', 'level', 'show_if']],
             'info' => ['label' => 'Hinweistext', 'icon' => 'fa-info-circle', 'group' => 'layout', 'value' => false,
                 'yform' => null, 'props' => ['text', 'style', 'show_if']],
+            'iban' => ['label' => 'IBAN', 'icon' => 'fa-university', 'group' => 'input', 'value' => true, 'sensitive' => true,
+                'yform' => ['type' => 'text', 'db_type' => 'varchar(191)'], 'props' => [...$common, 'bank_lookup']],
+            'address' => ['label' => 'Adresse', 'icon' => 'fa-map-marker', 'group' => 'input', 'value' => true,
+                'yform' => ['type' => 'textarea', 'db_type' => 'text'], 'props' => [...$common, 'address_suggest', 'with_country', 'countries']],
+            'repeater' => ['label' => 'Wiederholgruppe', 'icon' => 'fa-clone', 'group' => 'input', 'value' => true,
+                'yform' => ['type' => 'textarea', 'db_type' => 'text'], 'props' => [...$common, 'subfields', 'min_rows', 'max_rows', 'add_label', 'row_label']],
             'hidden' => ['label' => 'Verstecktes Feld', 'icon' => 'fa-eye-slash', 'group' => 'input', 'value' => true,
                 'yform' => ['type' => 'text', 'db_type' => 'varchar(191)'], 'props' => ['name', 'default']],
         ];
@@ -67,9 +73,18 @@ final class FieldTypes
         return self::$types;
     }
 
+    /** Feldtypen innerhalb einer Wiederholgruppe */
+    public const SUBFIELD_TYPES = ['text' => 'Text', 'email' => 'E-Mail', 'tel' => 'Telefon', 'number' => 'Zahl', 'date' => 'Datum', 'select' => 'Auswahl', 'textarea' => 'Mehrzeilig'];
+
     public static function get(string $type): ?array
     {
         return self::all()[$type] ?? null;
+    }
+
+    /** Vertrauliche Felder: für die anfragende Person nur maskiert (PDF, Kopie), auf dem Server verschlüsselt (YForm Encryption) */
+    public static function isSensitive(array $field): bool
+    {
+        return (bool) (self::get((string) ($field['type'] ?? ''))['sensitive'] ?? false);
     }
 
     public static function hasValue(array $field): bool
