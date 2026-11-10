@@ -78,17 +78,23 @@ final class Processor
             if (!($visible[$name] ?? true)) {
                 continue;
             }
-            $data[] = ['name' => $name, 'label' => (string) ($field['label'] ?? $name), 'value' => $values[$name] ?? '', 'display' => self::display($field, $values[$name] ?? '')];
+            $item = ['name' => $name, 'label' => (string) ($field['label'] ?? $name), 'value' => $values[$name] ?? '', 'display' => self::display($field, $values[$name] ?? '')];
+            if (FieldTypes::isSensitive($field)) {
+                // für die anfragende Person (PDF-Download, Kopie): nur erkennbar, nicht verwertbar
+                $item['display_public'] = self::displayPublic($field, $values[$name] ?? '');
+            }
+            $data[] = $item;
         }
         $data = rex_extension::registerPoint(new rex_extension_point('FORM_STUDIO_DATA', $data, ['form' => $form]));
 
+        // Zwischenspeicher für den PDF-Download enthält vertrauliche Felder nur maskiert
         $submission = Submission::create($form, $data);
         SpamGuard::accepted($form, $values);
         try {
             if ($form->setting('store_yform', false)) {
                 YFormSync::store($form, $data);
             }
-            Mailer::send($form, $submission);
+            Mailer::send($form, $submission, $data);
         } catch (Throwable $e) {
             rex_logger::logException($e);
         }
@@ -143,6 +149,42 @@ final class Processor
                 $values[$name] = '1' === (string) $value ? '1' : '';
                 continue;
             }
+            if ('iban' === $type) {
+                $values[$name] = is_scalar($value) ? mb_substr(Iban::normalize((string) $value), 0, 34) : '';
+                continue;
+            }
+            if ('address' === $type) {
+                $a = is_array($value) ? $value : [];
+                $clean = static fn (string $k, int $len): string => is_scalar($a[$k] ?? null) ? trim(mb_substr((string) $a[$k], 0, $len)) : '';
+                $country = strtoupper($clean('country', 2));
+                $values[$name] = ['street' => $clean('street', 150), 'zip' => $clean('zip', 12), 'city' => $clean('city', 100), 'country' => isset(Address::COUNTRIES[$country]) ? $country : ''];
+                continue;
+            }
+            if ('repeater' === $type) {
+                $subs = Renderer::subfields($field);
+                $max = max(1, (int) ($field['max_rows'] ?? 10));
+                $rows = [];
+                foreach (is_array($value) ? $value : [] as $row) {
+                    if (!is_array($row) || count($rows) >= $max) {
+                        continue;
+                    }
+                    $clean = [];
+                    foreach ($subs as $sub) {
+                        $v = $row[$sub['name']] ?? '';
+                        $v = is_scalar($v) ? trim(mb_substr((string) $v, 0, 'textarea' === ($sub['type'] ?? '') ? 2000 : 300)) : '';
+                        if ('select' === ($sub['type'] ?? '') && '' !== $v && !in_array($v, array_column(Renderer::options($sub), 'value'), true)) {
+                            $v = '';
+                        }
+                        $clean[$sub['name']] = $v;
+                    }
+                    // komplett leere Zeilen verwerfen
+                    if ('' !== implode('', $clean)) {
+                        $rows[] = $clean;
+                    }
+                }
+                $values[$name] = $rows;
+                continue;
+            }
             $values[$name] = is_scalar($value) ? trim(mb_substr((string) $value, 0, 'textarea' === $type ? 10000 : 500)) : '';
         }
         return $values;
@@ -163,8 +205,41 @@ final class Processor
             }
             $label = (string) ($field['label'] ?? $name);
             $value = $values[$name] ?? '';
-            $empty = is_array($value) ? [] === $value : '' === (string) $value;
             $type = (string) ($field['type'] ?? 'text');
+            $empty = 'address' === $type ? '' === implode('', array_intersect_key((array) $value, ['street' => 1, 'zip' => 1, 'city' => 1]))
+                : (is_array($value) ? [] === $value : '' === (string) $value);
+            if ('repeater' === $type) {
+                $min = max(0, (int) ($field['min_rows'] ?? 1));
+                $rowLabel = (string) ($field['row_label'] ?? '') ?: 'Eintrag';
+                if ((!empty($field['required']) || $min > 0) && count((array) $value) < max(!empty($field['required']) ? 1 : 0, $min)) {
+                    $errors[$name] = 'Bitte geben Sie mindestens ' . max(1, $min) . ' ' . ($min > 1 ? 'Einträge' : 'Eintrag') . ' bei „' . $label . '“ an.';
+                    continue;
+                }
+                foreach ((array) $value as $i => $row) {
+                    foreach (Renderer::subfields($field) as $sub) {
+                        $v = (string) ($row[$sub['name']] ?? '');
+                        $subLabel = (string) ($sub['label'] ?? $sub['name']);
+                        $where = $rowLabel . ' ' . ($i + 1) . ': ';
+                        if (!empty($sub['required']) && '' === $v) {
+                            $errors[$name] = $where . 'Bitte füllen Sie „' . $subLabel . '“ aus.';
+                            break 2;
+                        }
+                        if ('' !== $v && 'email' === ($sub['type'] ?? '') && !filter_var($v, FILTER_VALIDATE_EMAIL)) {
+                            $errors[$name] = $where . 'Bitte geben Sie eine gültige E-Mail-Adresse an.';
+                            break 2;
+                        }
+                        if ('' !== $v && 'number' === ($sub['type'] ?? '') && !is_numeric($v)) {
+                            $errors[$name] = $where . '„' . $subLabel . '“ muss eine Zahl sein.';
+                            break 2;
+                        }
+                        if ('' !== $v && 'date' === ($sub['type'] ?? '') && !\DateTimeImmutable::createFromFormat('!Y-m-d', $v)) {
+                            $errors[$name] = $where . 'Bitte geben Sie ein gültiges Datum an.';
+                            break 2;
+                        }
+                    }
+                }
+                continue;
+            }
 
             if (!empty($field['required']) && $empty) {
                 $errors[$name] = match ($type) {
@@ -177,7 +252,16 @@ final class Processor
             if ($empty) {
                 continue;
             }
-            if ('email' === $type && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            if ('iban' === $type && '' !== ($ibanError = Iban::check((string) $value))) {
+                $errors[$name] = $ibanError;
+            } elseif ('address' === $type) {
+                $a = (array) $value;
+                if ('' === (string) ($a['street'] ?? '') || '' === (string) ($a['zip'] ?? '') || '' === (string) ($a['city'] ?? '')) {
+                    $errors[$name] = 'Bitte geben Sie die vollständige Adresse an (Straße und Hausnummer, PLZ, Ort).';
+                } elseif ('' !== ($zipError = Address::checkZip((string) $a['zip'], (string) ($a['country'] ?: 'DE')))) {
+                    $errors[$name] = $zipError;
+                }
+            } elseif ('email' === $type && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
                 $errors[$name] = 'Bitte geben Sie eine gültige E-Mail-Adresse an.';
             } elseif (in_array($type, ['number', 'counter'], true)) {
                 if (!is_numeric($value)) {
@@ -201,10 +285,50 @@ final class Processor
         return $errors;
     }
 
+    /** Maskierte Darstellung vertraulicher Felder (anfragende Person) */
+    public static function displayPublic(array $field, mixed $value): string
+    {
+        if ('iban' === ($field['type'] ?? '') && '' !== (string) $value) {
+            $bank = false !== ($field['bank_lookup'] ?? true) ? Iban::bank((string) $value) : null;
+            return Iban::mask((string) $value) . ($bank ? ' (' . $bank['name'] . ')' : '');
+        }
+        return '' === (string) $value ? '' : '••••';
+    }
+
     /** Lesbare Darstellung (Optionstexte statt Werte, Datum deutsch) */
     public static function display(array $field, mixed $value): string
     {
         $type = (string) ($field['type'] ?? 'text');
+        if ('iban' === $type) {
+            if ('' === (string) $value) {
+                return '';
+            }
+            $bank = false !== ($field['bank_lookup'] ?? true) ? Iban::bank((string) $value) : null;
+            return Iban::format((string) $value) . ($bank ? ' (' . $bank['name'] . ('' !== $bank['bic'] ? ', BIC ' . $bank['bic'] : '') . ')' : '');
+        }
+        if ('address' === $type) {
+            return Address::format((array) $value, !empty($field['with_country']));
+        }
+        if ('repeater' === $type) {
+            $lines = [];
+            foreach ((array) $value as $i => $row) {
+                $parts = [];
+                foreach (Renderer::subfields($field) as $sub) {
+                    $v = (string) ($row[$sub['name']] ?? '');
+                    if ('' === $v) {
+                        continue;
+                    }
+                    if ('select' === ($sub['type'] ?? '')) {
+                        $v = array_column(Renderer::options($sub), 'label', 'value')[$v] ?? $v;
+                    } elseif ('date' === ($sub['type'] ?? '') && ($d = \DateTimeImmutable::createFromFormat('!Y-m-d', $v))) {
+                        $v = $d->format('d.m.Y');
+                    }
+                    $parts[] = ($sub['label'] ?? $sub['name']) . ': ' . $v;
+                }
+                $lines[] = ($i + 1) . '. ' . implode(' · ', $parts);
+            }
+            return implode("\n", $lines);
+        }
         if (is_array($value) || Renderer::options($field)) {
             $labels = array_column(Renderer::options($field), 'label', 'value');
             return implode(', ', array_map(static fn ($v) => $labels[(string) $v] ?? (string) $v, (array) $value));

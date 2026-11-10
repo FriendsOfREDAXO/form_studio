@@ -10,11 +10,14 @@ use rex_media;
 use rex_url;
 
 /**
- * Frontend-Ausgabe eines Formulars (UIkit-Markup, progressive enhancement mit assets/form-studio.js).
+ * Frontend-Ausgabe eines Formulars (framework-freies Markup mit fs-Klassen, progressive enhancement mit assets/form-studio.js).
  * Ohne JavaScript ist es ein vollständiges, einseitiges Formular.
  */
 final class Renderer
 {
+    /** Elemente, die zusätzliche Klassen bekommen können */
+    public const CLASS_KEYS = ['form', 'control', 'select', 'textarea', 'checkbox', 'radio', 'button_primary', 'button_secondary'];
+
     /**
      * @param array<string, mixed> $values bisherige Eingaben (nach Fehlern)
      * @param array<string, string> $errors Feldname => Meldung
@@ -111,7 +114,7 @@ final class Renderer
             . rex_escape((string) $form->setting('submit_label', 'Anfrage senden')) . '</button></div>';
         $html .= '<p class="fs-required-note"><span aria-hidden="true">*</span> Pflichtangabe</p>';
         $html .= '</form>' . self::pickerAssets() . '</div>';
-        return $html;
+        return self::frameworkClasses($form, $html);
     }
 
     /**
@@ -162,7 +165,54 @@ final class Renderer
             $html .= '<p><a class="fs-button fs-button--secondary" href="' . $url . '" download>'
                 . '<svg class="fs-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2v10m0 0-4-4m4 4 4-4M3 14v3h14v-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Ihre Anfrage als PDF speichern</a></p>';
         }
-        return $html . '</div></div>';
+        return self::frameworkClasses($form, $html . '</div></div>');
+    }
+
+    /**
+     * Zusätzliche CSS-Klassen für Formular, Eingabefelder und Buttons (z. B. UIkit oder Bootstrap).
+     * Je Formular (Einstellungen „CSS-Klassen (Frameworks)“) oder global (AddOn-Einstellungen); leer = nichts ändern.
+     *
+     * @return array<string, string> Schlüssel aus CLASS_KEYS => Klassen
+     */
+    public static function cssClasses(Form $form): array
+    {
+        $global = (array) rex_addon::get('form_studio')->getConfig('css_classes', []);
+        $out = [];
+        foreach (self::CLASS_KEYS as $key) {
+            $value = trim((string) $form->setting('class_' . $key, ''));
+            if ('' === $value) {
+                $value = trim((string) ($global[$key] ?? ''));
+            }
+            $classes = array_filter(preg_split('/\s+/', $value) ?: [], static fn (string $c): bool => 1 === preg_match('/^-?[A-Za-z_][A-Za-z0-9_:\/.-]*$/', $c));
+            if ($classes) {
+                $out[$key] = rex_escape(implode(' ', array_unique($classes)));
+            }
+        }
+        return $out;
+    }
+
+    /** Hängt die zusätzlichen Klassen an das eigene Markup an (nur an class-Attribute, die mit einer fs-Klasse beginnen). */
+    private static function frameworkClasses(Form $form, string $html): string
+    {
+        $classes = self::cssClasses($form);
+        if (!$classes) {
+            return $html;
+        }
+        return (string) preg_replace_callback('/class="(fs-(?:form|control|check|button)\b[^"]*)"/', static function (array $m) use ($classes): string {
+            $list = explode(' ', $m[1]);
+            $key = match (true) {
+                'fs-form' === $list[0] => 'form',
+                in_array('fs-control--select', $list, true) => isset($classes['select']) ? 'select' : 'control',
+                in_array('fs-control--textarea', $list, true) => isset($classes['textarea']) ? 'textarea' : 'control',
+                'fs-control' === $list[0] => 'control',
+                in_array('fs-check--checkbox', $list, true) => 'checkbox',
+                in_array('fs-check--radio', $list, true) => 'radio',
+                in_array('fs-button--primary', $list, true) => 'button_primary',
+                in_array('fs-button--secondary', $list, true) => 'button_secondary',
+                default => '',
+            };
+            return isset($classes[$key]) ? 'class="' . $m[1] . ' ' . $classes[$key] . '"' : $m[0];
+        }, $html);
     }
 
     /**
@@ -265,6 +315,18 @@ final class Renderer
                     . '<span class="fs-switch__state fs-switch__state--on" aria-hidden="true">' . rex_escape($on) . '</span>'
                     . '<span class="fs-switch__state fs-switch__state--off" aria-hidden="true">' . rex_escape($off) . '</span></label>';
                 return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . $control . $err . '</div>';
+            case 'iban':
+                // Formatierung und Prüfung im Browser (form-studio.js), Bank/BIC über die Lookup-API (ohne Kontonummer)
+                $lookup = false !== ($field['bank_lookup'] ?? true) ? rex_url::frontendController(['rex-api-call' => 'form_studio_lookup', 'kind' => 'iban'], false) : '';
+                $control = '<input class="fs-control fs-control--iban" type="text" id="' . $id . '" name="' . $inputName . '" value="' . rex_escape(Iban::format((string) $value)) . '"'
+                    . ' inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="42" placeholder="DE00 0000 0000 0000 0000 00" data-fs-iban'
+                    . ('' !== $lookup ? ' data-fs-iban-lookup="' . rex_escape($lookup) . '"' : '') . $req . $aria . '>'
+                    . '<div class="fs-iban__bank" data-fs-iban-bank aria-live="polite"></div>';
+                break;
+            case 'address':
+                return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . self::address($field, $id, $inputName, (array) $value, $required, $aria) . $err . '</div>';
+            case 'repeater':
+                return $wrap . '<div class="fs-label" id="' . $id . '-label">' . $label . '</div>' . $help . self::repeater($form, $field, $id, $inputName, $value, $aria) . $err . '</div>';
             case 'counter':
                 $min = (int) ($field['min'] ?? 0);
                 $max = isset($field['max']) && '' !== $field['max'] ? (int) $field['max'] : null;
@@ -312,6 +374,10 @@ final class Renderer
     {
         $default = $field['default'] ?? '';
         $type = (string) ($field['type'] ?? '');
+        // Einstellung „Datum und Uhrzeit nie vorbelegen“: Gäste wählen Termin und Uhrzeit selbst
+        if (in_array($type, ['time', 'date'], true) && self::noDateTimeDefaults()) {
+            return '';
+        }
         if (!is_string($default) || !in_array($type, ['time', 'date'], true) || !preg_match('/^(now|today)(?:\+(\d+)([mhd]))?$/', $default, $m)) {
             return $default;
         }
@@ -326,9 +392,20 @@ final class Renderer
         return 'time' === $type ? $time->format('H:i') : $time->format('Y-m-d');
     }
 
+    /** AddOn-Einstellung „Datum und Uhrzeit nie vorbelegen“ */
+    public static function noDateTimeDefaults(): bool
+    {
+        return (bool) rex_addon::get('form_studio')->getConfig('no_datetime_default', false);
+    }
+
     /** @return list<array{value: string, label: string, image: string, description: string}> */
     public static function options(array $field): array
     {
+        // Datenquelle (YForm-Tabelle, gespeicherte Abfrage, eigene Quelle) statt manueller Liste
+        $fromSource = OptionSource::load($field);
+        if (null !== $fromSource) {
+            return array_map(static fn (array $o): array => $o + ['image' => '', 'description' => ''], $fromSource);
+        }
         $out = [];
         foreach ((array) ($field['options'] ?? []) as $opt) {
             if (is_string($opt)) {
@@ -340,6 +417,118 @@ final class Renderer
                 continue;
             }
             $out[] = ['value' => $value, 'label' => (string) ($opt['label'] ?? $value), 'image' => (string) ($opt['image'] ?? ''), 'description' => (string) ($opt['description'] ?? '')];
+        }
+        return $out;
+    }
+
+    /**
+     * Adresse: Straße und Hausnummer (mit Vorschlägen beim Tippen), PLZ, Ort, optional Land.
+     *
+     * @param array<string, string> $value
+     */
+    private static function address(array $field, string $id, string $inputName, array $value, bool $required, string $aria): string
+    {
+        $req = $required ? ' required' : '';
+        $suggest = false !== ($field['address_suggest'] ?? true);
+        $countries = array_values(array_filter(array_map('trim', explode(',', strtoupper((string) ($field['countries'] ?? '')))), static fn ($c) => isset(Address::COUNTRIES[$c])));
+        $withCountry = !empty($field['with_country']);
+        $v = static fn (string $k): string => rex_escape((string) ($value[$k] ?? ''));
+        $lookup = $suggest ? rex_url::frontendController(['rex-api-call' => 'form_studio_lookup', 'kind' => 'address'], false) : '';
+        $html = '<div class="fs-address" role="group" aria-labelledby="' . $id . '-label"' . ('' !== $lookup ? ' data-fs-address="' . rex_escape($lookup) . '" data-countries="' . rex_escape(implode(',', $countries)) . '"' : '') . '>';
+        $html .= '<div class="fs-address__street"><label class="fs-sublabel" for="' . $id . '">Straße und Hausnummer</label>'
+            . '<div class="fs-combobox"><input class="fs-control" type="text" id="' . $id . '" name="' . $inputName . '[street]" value="' . $v('street') . '"'
+            . ($suggest
+                ? ' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' . $id . '-list" autocomplete="off" data-fs-address-input'
+                : ' autocomplete="address-line1"')
+            . $req . $aria . '>'
+            . ($suggest ? '<ul class="fs-combobox__list" id="' . $id . '-list" role="listbox" aria-label="Adressvorschläge" hidden></ul>' : '')
+            . '</div>' . ($suggest ? '<p class="fs-hint fs-address__hint" id="' . $id . '-hint">Tippen Sie die Adresse ein – wir schlagen passende Adressen vor.</p>' : '') . '</div>';
+        $html .= '<div class="fs-address__zip"><label class="fs-sublabel" for="' . $id . '-zip">PLZ</label><input class="fs-control" type="text" id="' . $id . '-zip" name="' . $inputName . '[zip]" value="' . $v('zip') . '" autocomplete="postal-code" inputmode="text" maxlength="10" data-fs-address-zip' . $req . '></div>';
+        $html .= '<div class="fs-address__city"><label class="fs-sublabel" for="' . $id . '-city">Ort</label><input class="fs-control" type="text" id="' . $id . '-city" name="' . $inputName . '[city]" value="' . $v('city') . '" autocomplete="address-level2" data-fs-address-city' . $req . '></div>';
+        if ($withCountry) {
+            $list = $countries ?: array_keys(Address::COUNTRIES);
+            $current = (string) ($value['country'] ?? '') ?: $list[0];
+            $html .= '<div class="fs-address__country"><label class="fs-sublabel" for="' . $id . '-country">Land</label><select class="fs-control fs-control--select" id="' . $id . '-country" name="' . $inputName . '[country]" autocomplete="country" data-fs-address-country>';
+            foreach ($list as $code) {
+                $html .= '<option value="' . $code . '"' . ($code === $current ? ' selected' : '') . '>' . rex_escape(Address::COUNTRIES[$code]) . '</option>';
+            }
+            $html .= '</select></div>';
+        }
+        return $html . '</div>';
+    }
+
+    /**
+     * Wiederholgruppe: Zeilen mit Unterfeldern, „hinzufügen“/„entfernen“ (form-studio.js), Vorlage für neue Zeilen.
+     */
+    private static function repeater(Form $form, array $field, string $id, string $inputName, mixed $value, string $aria): string
+    {
+        $subs = self::subfields($field);
+        $rows = is_array($value) ? array_values(array_filter($value, 'is_array')) : [];
+        $min = max(0, (int) ($field['min_rows'] ?? 1));
+        $max = max(1, (int) ($field['max_rows'] ?? 10));
+        while (count($rows) < max(1, $min)) {
+            $rows[] = [];
+        }
+        $rowLabel = (string) ($field['row_label'] ?? '') ?: 'Eintrag';
+        $html = '<div class="fs-repeater" data-fs-repeater data-min="' . $min . '" data-max="' . $max . '" data-row-label="' . rex_escape($rowLabel) . '"' . $aria . '>';
+        $html .= '<ol class="fs-repeater__rows" data-fs-rows>';
+        foreach ($rows as $i => $row) {
+            $html .= self::repeaterRow($subs, $id, $inputName, (string) $i, $row, $rowLabel, $i + 1);
+        }
+        $html .= '</ol>';
+        $html .= '<template data-fs-row-template>' . self::repeaterRow($subs, $id, $inputName, '__I__', [], $rowLabel, 0) . '</template>';
+        $html .= '<button type="button" class="fs-button fs-button--secondary fs-repeater__add" data-fs-add>'
+            . '<span aria-hidden="true">+</span> ' . rex_escape((string) ($field['add_label'] ?? '') ?: $rowLabel . ' hinzufügen') . '</button>';
+        $html .= '<p class="fs-hint fs-repeater__status" aria-live="polite" data-fs-repeater-status></p>';
+        return $html . '</div>';
+    }
+
+    /** @param list<array<string, mixed>> $subs */
+    private static function repeaterRow(array $subs, string $id, string $inputName, string $index, array $row, string $rowLabel, int $nr): string
+    {
+        $html = '<li class="fs-repeater__row" data-fs-row><div class="fs-repeater__head"><span class="fs-repeater__title" data-fs-row-title>' . rex_escape($rowLabel) . ' ' . ($nr ?: '') . '</span>'
+            . '<button type="button" class="fs-link-button fs-repeater__remove" data-fs-remove>Entfernen</button></div><div class="fs-grid">';
+        foreach ($subs as $sub) {
+            $subName = (string) $sub['name'];
+            $subId = $id . '-' . $index . '-' . $subName;
+            $name = $inputName . '[' . $index . '][' . rex_escape($subName) . ']';
+            $req = !empty($sub['required']) ? ' required aria-required="true"' : '';
+            $val = rex_escape((string) ($row[$subName] ?? ''));
+            $width = preg_match('/^\d-\d$/', (string) ($sub['width'] ?? '')) ? $sub['width'] : '1-2';
+            $label = '<label class="fs-sublabel" for="' . $subId . '">' . rex_escape((string) ($sub['label'] ?? $subName)) . (!empty($sub['required']) ? ' <span class="fs-req" aria-hidden="true">*</span>' : '') . '</label>';
+            $type = (string) ($sub['type'] ?? 'text');
+            if ('select' === $type) {
+                $control = '<select class="fs-control fs-control--select" id="' . $subId . '" name="' . $name . '"' . $req . '><option value="">Bitte wählen …</option>';
+                foreach (self::options($sub) as $opt) {
+                    $control .= '<option value="' . rex_escape($opt['value']) . '"' . ((string) ($row[$subName] ?? '') === $opt['value'] ? ' selected' : '') . '>' . rex_escape($opt['label']) . '</option>';
+                }
+                $control .= '</select>';
+            } elseif ('textarea' === $type) {
+                $control = '<textarea class="fs-control fs-control--textarea" id="' . $subId . '" name="' . $name . '" rows="3"' . $req . '>' . $val . '</textarea>';
+            } else {
+                $inputType = in_array($type, ['email', 'tel', 'number', 'date'], true) ? $type : 'text';
+                $auto = ['email' => 'email', 'tel' => 'tel'][$type] ?? 'off';
+                $control = '<input class="fs-control" type="' . $inputType . '" id="' . $subId . '" name="' . $name . '" value="' . $val . '" autocomplete="' . $auto . '"' . $req . '>';
+            }
+            $html .= '<div class="fs-field fs-w-' . $width . ' fs-subfield">' . $label . '<div class="fs-controls">' . $control . '</div></div>';
+        }
+        return $html . '</div></li>';
+    }
+
+    /**
+     * Unterfelder einer Wiederholgruppe (bereinigt).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function subfields(array $field): array
+    {
+        $out = [];
+        foreach ((array) ($field['subfields'] ?? []) as $sub) {
+            $name = (string) preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($sub['name'] ?? '')));
+            if ('' === $name || !isset(FieldTypes::SUBFIELD_TYPES[(string) ($sub['type'] ?? 'text')])) {
+                continue;
+            }
+            $out[] = ['name' => $name] + $sub;
         }
         return $out;
     }
@@ -421,7 +610,7 @@ final class Renderer
             return [];
         }
         // Ansage des Schritts für Screenreader, sobald eine der Schritt-Funktionen aktiv ist
-        if ($multi && array_intersect_key($config, ['transition' => 1, 'nav' => 1, 'counter' => 1, 'auto' => 1])) {
+        if (array_intersect_key($config, ['transition' => 1, 'nav' => 1, 'counter' => 1, 'auto' => 1])) {
             $config['live'] = true;
         }
         $config['key'] = $form->key;
@@ -498,6 +687,8 @@ final class Renderer
         self::$assetsDone = true;
         $addon = rex_addon::get('form_studio');
         $v = static fn (string $f) => $addon->getAssetsUrl($f) . '?v=' . @filemtime($addon->getAssetsPath($f));
-        return '<link rel="stylesheet" href="' . $v('form-studio.css') . '"><script src="' . $v('form-studio.js') . '" defer></script>';
+        // Einstellung „Eigenes CSS laden“ aus: Gestaltung komplett durch die Website (z. B. UIkit, Bootstrap, Tailwind)
+        $css = false !== $addon->getConfig('load_css', true) ? '<link rel="stylesheet" href="' . $v('form-studio.css') . '">' : '';
+        return $css . '<script src="' . $v('form-studio.js') . '" defer></script>';
     }
 }

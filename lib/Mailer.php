@@ -14,14 +14,22 @@ use rex_mailer;
  */
 final class Mailer
 {
-    public static function send(Form $form, Submission $submission): void
+    /**
+     * @param list<array<string, mixed>>|null $fullData vollständige Daten (fürs Hotel); die Einsendung selbst enthält vertrauliche Felder nur maskiert
+     */
+    public static function send(Form $form, Submission $submission, ?array $fullData = null): void
     {
+        $teamData = $fullData ?? $submission->data;
+        $publicData = Submission::publicData($teamData);
         if (!rex_addon::get('phpmailer')->isAvailable()) {
             return;
         }
         $sender = Sender::forDomain($submission->domain);
         $subject = (string) $form->setting('mail_subject', 'Neue Anfrage: ' . $form->name);
-        $pdf = Pdf::available() && $form->setting('pdf', true) ? Pdf::render($form, $submission) : '';
+        $withPdf = Pdf::available() && $form->setting('pdf', true);
+        // zwei Fassungen: Hotel mit allen Angaben, anfragende Person mit maskierten vertraulichen Feldern
+        $pdfTeam = $withPdf ? Pdf::render($form, $submission, $teamData) : '';
+        $pdfCopy = $withPdf ? ($publicData === $teamData ? $pdfTeam : Pdf::render($form, $submission, $publicData)) : '';
         $filename = Pdf::filename($form, $submission);
         $replyTo = self::senderEmail($form, $submission);
 
@@ -35,7 +43,7 @@ final class Mailer
             if ('' !== $replyTo) {
                 $mail->addReplyTo($replyTo);
             }
-            self::compose($mail, $subject, self::body($form, $submission, $sender, true), $form->setting('pdf_attach_team', true) ? $pdf : '', $filename);
+            self::compose($mail, $subject, self::body($form, $submission, $sender, true, $teamData), $form->setting('pdf_attach_team', true) ? $pdfTeam : '', $filename);
             self::dispatch($mail, $form, 'team');
         }
 
@@ -46,7 +54,7 @@ final class Mailer
             if (filter_var($sender['email'], FILTER_VALIDATE_EMAIL)) {
                 $mail->addReplyTo($sender['email'], $sender['name']);
             }
-            self::compose($mail, (string) $form->setting('copy_subject', 'Ihre Anfrage bei ' . ($sender['name'] ?: $form->name)), self::body($form, $submission, $sender, false), $form->setting('pdf_attach_copy', true) ? $pdf : '', $filename);
+            self::compose($mail, (string) $form->setting('copy_subject', 'Ihre Anfrage bei ' . ($sender['name'] ?: $form->name)), self::body($form, $submission, $sender, false, $publicData), $form->setting('pdf_attach_copy', true) ? $pdfCopy : '', $filename);
             self::dispatch($mail, $form, 'copy');
         }
     }
@@ -96,11 +104,12 @@ final class Mailer
         return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
     }
 
-    private static function body(Form $form, Submission $submission, array $sender, bool $team): string
+    /** @param list<array<string, mixed>> $items */
+    private static function body(Form $form, Submission $submission, array $sender, bool $team, array $items): string
     {
         $color = $sender['color'];
         $rows = '';
-        foreach ($submission->data as $item) {
+        foreach ($items as $item) {
             if ('' === (string) $item['display']) {
                 continue;
             }

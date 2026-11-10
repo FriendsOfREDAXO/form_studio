@@ -135,3 +135,28 @@ form_studio_pdf_tpl_create = Vorlage anlegen
 form_studio_pdf_tpl_created = Vorlage „{0}“ angelegt.
 form_studio_pdf_tpl_edit = Jetzt bearbeiten
 form_studio_pdf_tpl_no_pdfout = Für PDFs wird das AddOn pdfout benötigt.
+
+# Duplizieren
+form_studio_duplicate = Duplizieren
+form_studio_duplicate_title = Kopie dieses Formulars anlegen (inaktiv)
+form_studio_duplicate_done = Formular „{0}“ dupliziert. Die Kopie „{1}“ ist inaktiv – schalten Sie sie unter „Aktiv“ frei, sobald sie fertig ist.
+form_studio_duplicate_table = Die Kopie speichert nicht in die YForm-Tabelle {0} des Originals, sondern – sobald „Einsendungen speichern“ an ist – in eine eigene Tabelle ({1}).
+form_studio_duplicate_missing = Das Formular wurde nicht gefunden.
+form_studio_duplicate_denied = Ihnen fehlt die Berechtigung für Form Studio.
+
+# Darstellung (CSS-Klassen für Frameworks)
+form_studio_s_design = CSS-Klassen (Frameworks)
+form_studio_s_design_help = Zusätzliche CSS-Klassen, z. B. aus UIkit oder Bootstrap. Sie ergänzen die fs-Klassen; leer = Vorgabe aus den Form-Studio-Einstellungen.
+form_studio_set_class_form = Klassen für das Formular
+form_studio_set_class_control = Klassen für Eingabefelder
+form_studio_set_class_control_help = z. B. „uk-input“ (UIkit) oder „form-control“ (Bootstrap)
+form_studio_set_class_select = Klassen für Auswahllisten
+form_studio_set_class_select_help = z. B. „uk-select“ oder „form-select“; leer = wie Eingabefelder
+form_studio_set_class_textarea = Klassen für mehrzeilige Felder
+form_studio_set_class_textarea_help = z. B. „uk-textarea“; leer = wie Eingabefelder
+form_studio_set_class_checkbox = Klassen für Checkboxen
+form_studio_set_class_radio = Klassen für Optionsfelder
+form_studio_set_class_button_primary = Klassen für den Haupt-Button (Weiter, Absenden)
+form_studio_set_class_button_primary_help = z. B. „uk-button uk-button-primary“ oder „btn btn-primary“
+form_studio_set_class_button_secondary = Klassen für weitere Buttons (Zurück, PDF, − / +)
+form_studio_set_class_button_secondary_help = z. B. „uk-button uk-button-default“ oder „btn btn-outline-secondary“
