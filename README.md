@@ -69,6 +69,28 @@ echo FriendsOfRedaxo\FormStudio\Processor::handle($form);
 echo FriendsOfRedaxo\FormStudio\Processor::handle($form, ['success_text' => 'Danke!', 'wrapper_class' => 'mein-rahmen']);
 ```
 
+### Knöpfe zu Formularen und automatische Snippets
+
+Ein Knopf öffnet die Online-Seite, auf der ein Formular mit dem Modul „Form Studio: Formular“ eingebunden ist – bei mehreren Domains (YRewrite) bevorzugt die aktuelle. Überall einsetzbar, wo HTML ausgegeben wird:
+
+```html
+<form-studio-button data-form="5" data-text="Tagung anfragen" data-preset="event_type=tagung"></form-studio-button>
+```
+
+`data-form` = ID, Schlüssel oder Name; `data-text` optional (leer = Name des Formulars); `data-preset` optional, im Format einer Query (`feld=wert&feld2=wert2`, siehe *Vorbelegung per Link*). Fehlt das Formular oder ist es auf keiner Online-Seite eingebunden, erscheint nichts – angemeldete Redakteure sehen einen Hinweis.
+
+**Knopf-Vorlage** (Einstellungen → Knöpfe zu Formularen & Snippets): bestimmt das Markup, Platzhalter `{{url}}`, `{{text}}`, `{{form_name}}`, `{{form_key}}`, `{{form_id}}`. Beispiele:
+
+```html
+<a class="uk-button uk-button-primary" href="{{url}}">{{text}}</a>          <!-- UIkit -->
+<a class="btn btn-primary" href="{{url}}">{{text}}</a>                       <!-- Bootstrap -->
+<a class="uk-button uk-button-primary ajaxmodal" href="{{url}}">{{text}}</a> <!-- Overlay per Website-Skript -->
+```
+
+Form Studio öffnet selbst kein Overlay – soll das Formular über der Seite erscheinen, die Klasse oder das Attribut eintragen, auf das das Overlay-Skript der Website reagiert.
+
+**Snippets automatisch anlegen** (mit dem AddOn *snippets*): Für jedes Formular entsteht ein Snippet `formular_<name>`, z. B. `[[snippet:formular_tagungsplaner]]` oder mit eigener Beschriftung `[[snippet:formular_tagungsplaner|text=Tagung anfragen]]`. Neue, duplizierte und gelöschte Formulare werden beim Speichern abgeglichen, inaktive Formulare haben ein inaktives Snippet. Ein umbenanntes Formular behält seinen Snippet-Schlüssel, damit bestehende Platzhalter funktionieren. Kategorie wählbar. In PHP: `FriendsOfRedaxo\FormStudio\Button::render('tagungsplaner', 'Tagung anfragen', ['event_type' => 'tagung'])`, `Button::url($formId, $preset)`, `Snippets::sync()`.
+
 ## Gestaltung
 
 Form Studio bringt eigenes, framework-freies CSS mit (`assets/form-studio.css`, Präfix `fs-`). Es funktioniert ohne UIkit, Bootstrap & Co., harmoniert aber mit UIkit 3. Alles lässt sich über CSS-Variablen im eigenen Theme anpassen – die Standardwerte stehen in `:where(.fs)` (Spezifität 0), eigene Angaben gewinnen also immer, unabhängig von der Ladereihenfolge:
@@ -179,6 +201,7 @@ Ist das AddOn [yform_encryption](https://github.com/FriendsOfREDAXO/yform_encryp
 | `FORM_STUDIO_SUBMITTED` | nach erfolgreicher Einsendung (z. B. CRM-Anbindung) |
 | `FORM_STUDIO_OPTION_SOURCES` | eigene Datenquellen für Auswahlfelder: `[key => ['label' => …, 'options' => fn (array $field) => [['value' => …, 'label' => …], …]]]` |
 | `FORM_STUDIO_DUPLICATE_SETTINGS` | Einstellungen der Kopie beim Duplizieren anpassen (`original`, `key`); `yform_table` ist bereits entfernt |
+| `FORM_STUDIO_BUTTON_PRESET` | Vorbelegung eines Knopfs ergänzen (Subject: `['feld' => 'wert']`, Param `form`: `Form`), z. B. das Haus der aktuellen Domain |
 | `FORM_STUDIO_PREVIEW_HEAD` | zusätzliches HTML im `<head>` der Live-Vorschau, z. B. die Stylesheets der Website, damit die Vorschau wie im Frontend aussieht |
 
 ### Live-Vorschau im Builder

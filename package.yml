@@ -1,5 +1,5 @@
 package: form_studio
-version: '0.3.0'
+version: '0.4.0'
 author: 'Friends Of REDAXO'
 supportpage: https://github.com/FriendsOfREDAXO/form_studio
 
@@ -29,3 +29,7 @@ default_config:
     load_css: true
     no_datetime_default: false
     css_classes: []
+    button_template: ''
+    snippets_enabled: false
+    snippets_category: 0
+    snippet_map: []
