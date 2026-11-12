@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 (2026-11-12)
+
+- **Knöpfe zu Formularen:** `<form-studio-button data-form="…" data-text="…" data-preset="…">` öffnet die Online-Seite, auf der das Formular eingebunden ist (aktuelle Domain zuerst, Vorbelegung per `fs_preset`). Markup über die neue **Knopf-Vorlage** in den Einstellungen (Platzhalter `{{url}}`, `{{text}}`, `{{form_name}}`, `{{form_key}}`, `{{form_id}}`) – passend zu UIkit, Bootstrap oder einem Overlay-Skript der Website. PHP: `Button::render()`, `Button::url()`. EP `FORM_STUDIO_BUTTON_PRESET`.
+- **Snippets automatisch anlegen** (mit dem AddOn *snippets*, Standard aus): je Formular ein Snippet `formular_<name>`, z. B. `[[snippet:formular_tagungsplaner|text=Tagung anfragen]]`. Abgleich beim Anlegen, Duplizieren, Speichern und Löschen von Formularen und beim Speichern der Einstellungen; inaktive Formulare → inaktives Snippet; Umbenennen ändert den Schlüssel nicht; Kategorie wählbar.
+
 ## 0.3.0 (2026-11-10)
 
 Führt die Linie 0.2.0 (formslider-Funktionen) mit den bisher unveröffentlichten Funktionen aus dem Projekteinsatz zusammen. Bestehende Formulare, Einstellungen und Einbindungen bleiben unverändert; alle neuen Funktionen sind standardmäßig aus.

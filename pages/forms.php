@@ -67,6 +67,7 @@ if ('create' === $func) {
         }
         // Nach dem Duplizieren direkt die Kopie bearbeiten (Redirect, damit ein Neuladen nicht erneut kopiert)
         rex_set_session('form_studio_flash', $message);
+        FriendsOfRedaxo\FormStudio\Snippets::sync();
         rex_response::sendRedirect(rex_url::currentBackendPage(['func' => 'edit', 'id' => $copyId], false));
     }
 } elseif ('delete' === $func && $id) {
@@ -110,6 +111,11 @@ if ('' === $message && '' !== ($flash = (string) rex_session('form_studio_flash'
     rex_unset_session('form_studio_flash');
 }
 echo $message;
+
+// Snippets der Formulare abgleichen (Einstellung „Snippets automatisch anlegen“)
+if (in_array(rex_request('func', 'string', ''), ['create', 'delete', 'save', 'duplicate'], true)) {
+    FriendsOfRedaxo\FormStudio\Snippets::sync();
+}
 
 if ('edit' === $func && ($form = Form::get($id))) {
     // Texte für den Builder (assets/builder.js)

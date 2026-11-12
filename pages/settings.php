@@ -44,6 +44,11 @@ if ('post' === rex_request::requestMethod() && 'pdf_template_create' !== rex_pos
             }
         }
         $addon->setConfig('css_classes', $cssClasses);
+        // Knöpfe zu Formularen und automatische Snippets
+        $buttonTemplate = trim(rex_post('button_template', 'string', ''));
+        $addon->setConfig('button_template', FriendsOfRedaxo\FormStudio\Button::DEFAULT_TEMPLATE === $buttonTemplate ? '' : $buttonTemplate);
+        $addon->setConfig('snippets_enabled', 1 === rex_post('snippets_enabled', 'int', 0));
+        $addon->setConfig('snippets_category', max(0, rex_post('snippets_category', 'int', 0)));
         $addon->setConfig('spam_rate_limit', max(0, rex_post('spam_rate_limit', 'int', 5)));
         $addon->setConfig('spam_max_links', max(0, rex_post('spam_max_links', 'int', 1)));
         $addon->setConfig('spam_upkeep_badwords', 1 === rex_post('spam_upkeep_badwords', 'int', 0));
@@ -66,7 +71,9 @@ if ('post' === rex_request::requestMethod() && 'pdf_template_create' !== rex_pos
             $queries[$key] = ['label' => trim((string) ($q['label'] ?? '')) ?: $key, 'sql' => $sqlText];
         }
         $addon->setConfig('queries', $queries);
-        echo rex_view::success('Einstellungen gespeichert.');
+        $synced = FriendsOfRedaxo\FormStudio\Snippets::sync();
+        echo rex_view::success('Einstellungen gespeichert.' . ($synced['created'] + $synced['updated'] + $synced['deleted'] > 0
+            ? ' Snippets: ' . $synced['created'] . ' angelegt, ' . $synced['updated'] . ' aktualisiert, ' . $synced['deleted'] . ' entfernt.' : ''));
     }
 }
 
@@ -155,6 +162,30 @@ $content .= '<fieldset><legend>Darstellung: eigenes CSS und Frameworks</legend>'
     . 'An: Standardwerte stehen in CSS-Variablen (<code>--fs-accent</code> usw.) und lassen sich im Theme überschreiben – siehe README „Eigenes CSS und Frameworks“.</p></div>'
     . '<p class="help-block">Zusätzliche CSS-Klassen für alle Formulare – sie ergänzen die <code>fs-</code>-Klassen. Im Formular unter Einstellungen → CSS-Klassen (Frameworks) lassen sie sich je Formular ersetzen. Leer = keine zusätzlichen Klassen.</p>'
     . '<div class="row">' . $classFields . '</div>'
+    . '</fieldset>';
+$buttonPlaceholders = '';
+foreach (FriendsOfRedaxo\FormStudio\Button::PLACEHOLDERS as $ph => $desc) {
+    $buttonPlaceholders .= '<li><code>' . rex_escape($ph) . '</code> – ' . rex_escape($desc) . '</li>';
+}
+$snippetsAvailable = FriendsOfRedaxo\FormStudio\Snippets::available();
+$categoryOptions = '<option value="0">– keine –</option>';
+foreach (FriendsOfRedaxo\FormStudio\Snippets::categories() as $catId => $catName) {
+    $categoryOptions .= '<option value="' . $catId . '"' . ($catId === (int) $addon->getConfig('snippets_category', 0) ? ' selected' : '') . '>' . rex_escape($catName) . '</option>';
+}
+$content .= '<fieldset><legend>Knöpfe zu Formularen & Snippets</legend>'
+    . '<p class="help-block">Ein Knopf öffnet die Seite, auf der das Formular mit dem Modul „Form Studio: Formular“ eingebunden ist (aktuelle Domain zuerst). '
+    . 'Einsetzbar überall, wo HTML ausgegeben wird: <code>&lt;form-studio-button data-form="ID" data-text="Beschriftung" data-preset="event_type=tagung"&gt;&lt;/form-studio-button&gt;</code> – oder bequemer über die Snippets unten.</p>'
+    . '<label for="fs-button-template">Knopf-Vorlage</label>'
+    . '<textarea class="form-control" id="fs-button-template" name="button_template" rows="3" style="font-family:monospace" aria-describedby="fs-button-template-help">' . rex_escape(FriendsOfRedaxo\FormStudio\Button::template()) . '</textarea>'
+    . '<div class="help-block" id="fs-button-template-help">Platzhalter:<ul>' . $buttonPlaceholders . '</ul>'
+    . 'Beispiele: UIkit <code>&lt;a class="uk-button uk-button-primary" href="{{url}}"&gt;{{text}}&lt;/a&gt;</code>, Bootstrap <code>&lt;a class="btn btn-primary" href="{{url}}"&gt;{{text}}&lt;/a&gt;</code>. '
+    . 'Soll sich das Formular als Overlay öffnen, die Klasse ergänzen, auf die das Overlay-Skript der Website reagiert. Leer = Standard.</div>'
+    . ($snippetsAvailable
+        ? '<div class="checkbox"><label><input type="checkbox" name="snippets_enabled" value="1" aria-describedby="fs-snippets-help"' . ($addon->getConfig('snippets_enabled', false) ? ' checked' : '') . '> Für jedes Formular automatisch ein Snippet anlegen</label>'
+            . '<p class="help-block" id="fs-snippets-help">Z. B. <code>[[snippet:formular_tagungsplaner]]</code> oder mit eigener Beschriftung <code>[[snippet:formular_tagungsplaner|text=Tagung anfragen]]</code>. '
+            . 'Neue, duplizierte und gelöschte Formulare werden automatisch abgeglichen; ein umbenanntes Formular behält seinen Snippet-Schlüssel. Inaktive Formulare: Snippet inaktiv.</p></div>'
+            . '<label for="fs-snippets-category">Kategorie der Snippets</label><select class="form-control" id="fs-snippets-category" name="snippets_category" style="max-width:20em">' . $categoryOptions . '</select>'
+        : '<p class="help-block">Tipp: Mit dem AddOn <strong>snippets</strong> legt Form Studio für jedes Formular automatisch ein Snippet für den Knopf an.</p>')
     . '</fieldset>';
 $content .= '<fieldset><legend>Spamschutz</legend>'
     . '<p class="help-block">Immer aktiv: unsichtbares Fangfeld, Mindestausfüllzeit, signierter Zeitstempel, Browser-Nachweis, Link- und HTML-Prüfung – ohne Captcha und ohne Drittanbieter. '
